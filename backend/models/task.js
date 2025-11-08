@@ -166,6 +166,23 @@ module.exports = (sequelize) => {
                 allowNull: true,
                 defaultValue: null,
             },
+            // Energy and time-of-day scheduling
+            when_time: {
+                type: DataTypes.STRING(20),
+                allowNull: true,
+                defaultValue: null,
+                validate: {
+                    isIn: [['morning', 'afternoon', 'evening', 'anytime', null]],
+                },
+            },
+            energy_level: {
+                type: DataTypes.STRING(20),
+                allowNull: true,
+                defaultValue: null,
+                validate: {
+                    isIn: [['low', 'medium', 'high', null]],
+                },
+            },
         },
         {
             tableName: 'tasks',
