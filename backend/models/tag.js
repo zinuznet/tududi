@@ -20,6 +20,14 @@ module.exports = (sequelize) => {
                 type: DataTypes.STRING,
                 allowNull: false,
             },
+            color: {
+                type: DataTypes.STRING(7), // #RRGGBB
+                allowNull: true,
+                defaultValue: null,
+                validate: {
+                    is: /^#[0-9A-Fa-f]{6}$/i, // Hex color validation
+                },
+            },
             user_id: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
