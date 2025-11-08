@@ -143,6 +143,16 @@ module.exports = (sequelize) => {
                 type: DataTypes.DATE,
                 allowNull: true,
             },
+            estimated_hours: {
+                type: DataTypes.DECIMAL(5, 2),
+                allowNull: true,
+                defaultValue: null,
+            },
+            timer_started_at: {
+                type: DataTypes.DATE,
+                allowNull: true,
+                defaultValue: null,
+            },
         },
         {
             tableName: 'tasks',
@@ -161,6 +171,12 @@ module.exports = (sequelize) => {
                 },
                 {
                     fields: ['parent_task_id'],
+                },
+                {
+                    fields: ['timer_started_at'],
+                },
+                {
+                    fields: ['user_id', 'timer_started_at'],
                 },
             ],
         }
@@ -188,6 +204,12 @@ module.exports = (sequelize) => {
         Task.hasMany(models.Task, {
             as: 'Subtasks',
             foreignKey: 'parent_task_id',
+        });
+
+        // Time tracking association
+        Task.hasMany(models.TimeEntry, {
+            as: 'TimeEntries',
+            foreignKey: 'task_id',
         });
     };
 

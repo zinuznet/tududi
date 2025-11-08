@@ -82,6 +82,21 @@ module.exports = (sequelize) => {
                 allowNull: false,
                 defaultValue: 'idea',
             },
+            default_task_hours: {
+                type: DataTypes.DECIMAL(5, 2),
+                allowNull: true,
+                defaultValue: 2.0,
+            },
+            time_tolerance_percent: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                defaultValue: 50,
+            },
+            hourly_rate: {
+                type: DataTypes.DECIMAL(8, 2),
+                allowNull: true,
+                defaultValue: null,
+            },
         },
         {
             tableName: 'projects',

@@ -165,6 +165,21 @@ module.exports = (sequelize) => {
                     pinnedViewsOrder: [],
                 },
             },
+            timer_auto_pause_minutes: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 30,
+            },
+            timer_reminder_interval_minutes: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 30,
+            },
+            timer_notification_enabled: {
+                type: DataTypes.BOOLEAN,
+                allowNull: false,
+                defaultValue: true,
+            },
         },
         {
             tableName: 'users',

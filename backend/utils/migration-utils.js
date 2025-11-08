@@ -21,11 +21,14 @@ async function safeAddColumns(queryInterface, tableName, columns) {
 
 async function safeCreateTable(queryInterface, tableName, tableDefinition) {
     try {
-        const tableExists = await queryInterface
-            .listTables()
-            .then((tables) => tables.includes(tableName));
-
-        if (!tableExists) {
+        // Try to describe table - if it fails, table doesn't exist
+        try {
+            await queryInterface.describeTable(tableName);
+            // Table exists, skip creation
+            console.log(`Table ${tableName} already exists, skipping creation`);
+            return;
+        } catch (describeError) {
+            // Table doesn't exist, create it
             await queryInterface.createTable(tableName, tableDefinition);
         }
     } catch (error) {
