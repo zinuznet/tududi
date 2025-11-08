@@ -179,6 +179,7 @@ const registerApiRoutes = (basePath) => {
     app.use(basePath, requireAuth, require('./routes/task-events'));
     app.use(`${basePath}/search`, requireAuth, require('./routes/search'));
     app.use(`${basePath}/views`, requireAuth, require('./routes/views'));
+    app.use(basePath, requireAuth, require('./routes/planner'));
 };
 
 const routeBases = new Set(['/api']);

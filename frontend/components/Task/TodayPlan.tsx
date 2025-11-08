@@ -4,6 +4,7 @@ import { CalendarDaysIcon } from '@heroicons/react/24/outline';
 import TaskList from './TaskList';
 import { Task } from '../../entities/Task';
 import { Project } from '../../entities/Project';
+import SmartPlanner from '../Planner/SmartPlanner';
 
 interface TodayPlanProps {
     todayPlanTasks: Task[] | undefined;
@@ -79,6 +80,11 @@ const TodayPlan: React.FC<TodayPlanProps> = ({
 
     return (
         <>
+            <SmartPlanner
+                onTaskUpdate={onTaskUpdate}
+                onTaskDelete={onTaskDelete}
+                projects={projects}
+            />
             <TaskList
                 tasks={sortedTasks}
                 onTaskUpdate={onTaskUpdate}
