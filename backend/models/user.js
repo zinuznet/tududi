@@ -180,6 +180,43 @@ module.exports = (sequelize) => {
                 allowNull: false,
                 defaultValue: true,
             },
+            // Pomodoro Timer Settings
+            pomodoro_work_minutes: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 25,
+                validate: {
+                    min: 1,
+                    max: 60,
+                },
+            },
+            pomodoro_short_break_minutes: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 5,
+                validate: {
+                    min: 1,
+                    max: 30,
+                },
+            },
+            pomodoro_long_break_minutes: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 15,
+                validate: {
+                    min: 5,
+                    max: 60,
+                },
+            },
+            pomodoro_sessions_until_long_break: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 4,
+                validate: {
+                    min: 2,
+                    max: 10,
+                },
+            },
         },
         {
             tableName: 'users',

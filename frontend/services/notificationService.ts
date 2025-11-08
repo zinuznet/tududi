@@ -93,6 +93,13 @@ class NotificationService {
     }
 
     /**
+     * Show generic notification (public wrapper for show)
+     */
+    async notify(options: NotificationOptions) {
+        return await this.show(options);
+    }
+
+    /**
      * Show timer started notification
      */
     async notifyTimerStarted(taskName: string) {

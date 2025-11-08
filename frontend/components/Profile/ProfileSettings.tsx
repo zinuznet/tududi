@@ -72,6 +72,10 @@ interface Profile {
     productivity_assistant_enabled: boolean;
     next_task_suggestion_enabled: boolean;
     pomodoro_enabled: boolean;
+    pomodoro_work_minutes: number;
+    pomodoro_short_break_minutes: number;
+    pomodoro_long_break_minutes: number;
+    pomodoro_sessions_until_long_break: number;
     timer_auto_pause_minutes: number;
     timer_reminder_interval_minutes: number;
     timer_notification_enabled: boolean;
@@ -1804,43 +1808,122 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                                 </div>
 
                                 {/* Pomodoro Timer */}
-                                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t(
-                                                'profile.enablePomodoro',
-                                                'Enable Pomodoro Timer'
-                                            )}
-                                        </label>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            {t(
-                                                'profile.pomodoroDescription',
-                                                'Enable the Pomodoro timer in the navigation bar for focused work sessions.'
-                                            )}
-                                        </p>
-                                    </div>
-                                    <div
-                                        className={`relative inline-block w-12 h-6 transition-colors duration-200 ease-in-out rounded-full cursor-pointer ${
-                                            formData.pomodoro_enabled
-                                                ? 'bg-blue-500'
-                                                : 'bg-gray-300 dark:bg-gray-600'
-                                        }`}
-                                        onClick={() => {
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                pomodoro_enabled:
-                                                    !prev.pomodoro_enabled,
-                                            }));
-                                        }}
-                                    >
-                                        <span
-                                            className={`absolute left-0 top-0 bottom-0 m-1 w-4 h-4 transition-transform duration-200 ease-in-out transform bg-white rounded-full ${
+                                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                {t(
+                                                    'profile.enablePomodoro',
+                                                    'Enable Pomodoro Timer'
+                                                )}
+                                            </label>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                {t(
+                                                    'profile.pomodoroDescription',
+                                                    'Focus technique with work sessions and breaks'
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div
+                                            className={`relative inline-block w-12 h-6 transition-colors duration-200 ease-in-out rounded-full cursor-pointer ${
                                                 formData.pomodoro_enabled
-                                                    ? 'translate-x-6'
-                                                    : 'translate-x-0'
+                                                    ? 'bg-blue-500'
+                                                    : 'bg-gray-300 dark:bg-gray-600'
                                             }`}
-                                        ></span>
+                                            onClick={() => {
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    pomodoro_enabled:
+                                                        !prev.pomodoro_enabled,
+                                                }));
+                                            }}
+                                        >
+                                            <span
+                                                className={`absolute left-0 top-0 bottom-0 m-1 w-4 h-4 transition-transform duration-200 ease-in-out transform bg-white rounded-full ${
+                                                    formData.pomodoro_enabled
+                                                        ? 'translate-x-6'
+                                                        : 'translate-x-0'
+                                                }`}
+                                            ></span>
+                                        </div>
                                     </div>
+
+                                    {/* Pomodoro Configuration */}
+                                    {formData.pomodoro_enabled && (
+                                        <div className="space-y-4 mt-4 pt-4 border-t border-blue-200 dark:border-blue-700">
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                                                    {t('profile.pomodoroWorkMinutes', 'Work session duration (minutes)')}
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="pomodoro_work_minutes"
+                                                    value={formData.pomodoro_work_minutes || 25}
+                                                    onChange={handleChange}
+                                                    min="1"
+                                                    max="60"
+                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                />
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    {t('profile.pomodoroWorkHelp', 'Recommended: 25 minutes')}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                                                    {t('profile.pomodoroShortBreakMinutes', 'Short break duration (minutes)')}
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="pomodoro_short_break_minutes"
+                                                    value={formData.pomodoro_short_break_minutes || 5}
+                                                    onChange={handleChange}
+                                                    min="1"
+                                                    max="30"
+                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                />
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    {t('profile.pomodoroShortBreakHelp', 'Recommended: 5 minutes')}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                                                    {t('profile.pomodoroLongBreakMinutes', 'Long break duration (minutes)')}
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="pomodoro_long_break_minutes"
+                                                    value={formData.pomodoro_long_break_minutes || 15}
+                                                    onChange={handleChange}
+                                                    min="5"
+                                                    max="60"
+                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                />
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    {t('profile.pomodoroLongBreakHelp', 'Recommended: 15 minutes')}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                                                    {t('profile.pomodoroSessionsUntilLongBreak', 'Sessions until long break')}
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="pomodoro_sessions_until_long_break"
+                                                    value={formData.pomodoro_sessions_until_long_break || 4}
+                                                    onChange={handleChange}
+                                                    min="2"
+                                                    max="10"
+                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                />
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    {t('profile.pomodoroSessionsHelp', 'Recommended: 4 sessions')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
