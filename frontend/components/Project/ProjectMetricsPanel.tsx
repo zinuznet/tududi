@@ -79,11 +79,11 @@ const ProjectMetricsPanel: React.FC<ProjectMetricsPanelProps> = ({ project }) =>
         return null;
     }
 
-    const progressPercent = metrics.estimation.total_estimated_hours > 0
+    const progressPercent = (metrics.estimation?.total_estimated_hours || 0) > 0
         ? Math.min(
               100,
-              (metrics.projection.projected_total_hours /
-                  metrics.budget.total_budget_hours) *
+              ((metrics.projection?.projected_total_hours || 0) /
+                  (metrics.budget?.total_budget_hours || 1)) *
                   100
           )
         : 0;
@@ -113,10 +113,10 @@ const ProjectMetricsPanel: React.FC<ProjectMetricsPanelProps> = ({ project }) =>
                         {t('project.estimated', 'Estimated')}
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                        {metrics.estimation.total_estimated_hours.toFixed(1)}h
+                        {(metrics.estimation.total_estimated_hours || 0).toFixed(1)}h
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {metrics.estimation.tasks_with_estimates} tasks
+                        {metrics.estimation.tasks_with_estimates || 0} tasks
                     </div>
                 </div>
 
@@ -127,10 +127,10 @@ const ProjectMetricsPanel: React.FC<ProjectMetricsPanelProps> = ({ project }) =>
                         {t('project.actualSpent', 'Actual Spent')}
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                        {metrics.actual.total_actual_hours.toFixed(1)}h
+                        {(metrics.actual.total_actual_hours || 0).toFixed(1)}h
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {metrics.actual.completed_tasks} completed
+                        {metrics.actual.completed_tasks || 0} completed
                     </div>
                 </div>
 
@@ -141,10 +141,10 @@ const ProjectMetricsPanel: React.FC<ProjectMetricsPanelProps> = ({ project }) =>
                         {t('project.projected', 'Projected Total')}
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                        {metrics.projection.projected_total_hours.toFixed(1)}h
+                        {(metrics.projection.projected_total_hours || 0).toFixed(1)}h
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {metrics.projection.remaining_tasks} remaining
+                        {metrics.projection.remaining_tasks || 0} remaining
                     </div>
                 </div>
 
@@ -155,10 +155,10 @@ const ProjectMetricsPanel: React.FC<ProjectMetricsPanelProps> = ({ project }) =>
                         {t('project.budget', 'Budget')}
                     </div>
                     <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                        {metrics.budget.total_budget_hours.toFixed(1)}h
+                        {(metrics.budget.total_budget_hours || 0).toFixed(1)}h
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        +{metrics.budget.tolerance_percent}% buffer
+                        +{metrics.budget.tolerance_percent || 0}% buffer
                     </div>
                 </div>
             </div>
@@ -183,7 +183,7 @@ const ProjectMetricsPanel: React.FC<ProjectMetricsPanelProps> = ({ project }) =>
             </div>
 
             {/* Variance */}
-            {metrics.projection.variance_hours !== 0 && (
+            {(metrics.projection?.variance_hours || 0) !== 0 && (
                 <div className="mb-6 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         {t('project.variance', 'Variance')}
@@ -191,23 +191,23 @@ const ProjectMetricsPanel: React.FC<ProjectMetricsPanelProps> = ({ project }) =>
                     <div className="flex items-center justify-between">
                         <span
                             className={`text-lg font-semibold ${
-                                metrics.projection.variance_hours > 0
+                                (metrics.projection?.variance_hours || 0) > 0
                                     ? 'text-red-600 dark:text-red-400'
                                     : 'text-green-600 dark:text-green-400'
                             }`}
                         >
-                            {metrics.projection.variance_hours > 0 ? '+' : ''}
-                            {metrics.projection.variance_hours.toFixed(1)}h
+                            {(metrics.projection?.variance_hours || 0) > 0 ? '+' : ''}
+                            {(metrics.projection?.variance_hours || 0).toFixed(1)}h
                         </span>
                         <span
                             className={`text-sm ${
-                                metrics.projection.variance_hours > 0
+                                (metrics.projection?.variance_hours || 0) > 0
                                     ? 'text-red-600 dark:text-red-400'
                                     : 'text-green-600 dark:text-green-400'
                             }`}
                         >
-                            ({metrics.projection.variance_percent > 0 ? '+' : ''}
-                            {metrics.projection.variance_percent.toFixed(0)}%)
+                            ({(metrics.projection?.variance_percent || 0) > 0 ? '+' : ''}
+                            {(metrics.projection?.variance_percent || 0).toFixed(0)}%)
                         </span>
                     </div>
                 </div>
