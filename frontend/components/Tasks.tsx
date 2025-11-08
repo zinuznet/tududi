@@ -656,6 +656,7 @@ const Tasks: React.FC = () => {
                                     projects={projects}
                                     onToggleToday={handleToggleToday}
                                     showCompletedTasks={showCompleted}
+                                    enableDragAndDrop={true}
                                 />
                             )
                         ) : (

@@ -3945,6 +3945,78 @@ router.post(
 );
 
 /**
+ * PUT /api/tasks/reorder
+ * Reorder main tasks (without parent)
+ * Body: { task_orders: [{ id, sort_order }, ...], project_id?: number }
+ */
+router.put('/tasks/reorder', async (req, res) => {
+    const { task_orders, project_id } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!Array.isArray(task_orders)) {
+        return res.status(400).json({
+            error: 'task_orders array is required',
+        });
+    }
+
+    const transaction = await sequelize.transaction();
+
+    try {
+        // Update each task's sort_order
+        for (const { id, sort_order } of task_orders) {
+            const whereClause = {
+                id,
+                user_id: userId, // Ensure ownership
+                parent_task_id: null, // Only main tasks (no subtasks)
+            };
+
+            // Optionally filter by project_id
+            if (project_id !== undefined) {
+                whereClause.project_id = project_id;
+            }
+
+            await Task.update(
+                { sort_order },
+                {
+                    where: whereClause,
+                    transaction,
+                }
+            );
+        }
+
+        await transaction.commit();
+
+        // Fetch updated tasks
+        const whereClause = {
+            user_id: userId,
+            parent_task_id: null,
+        };
+        if (project_id !== undefined) {
+            whereClause.project_id = project_id;
+        }
+
+        const tasks = await Task.findAll({
+            where: whereClause,
+            order: [['sort_order', 'ASC']],
+            include: [
+                { model: Tag, as: 'tags' },
+                { model: Project, as: 'Project' },
+            ],
+        });
+
+        res.json({ success: true, tasks });
+    } catch (error) {
+        await transaction.rollback();
+        logError('Error reordering tasks:', error);
+        res.status(500).json({ error: 'Failed to reorder tasks' });
+    }
+});
+
+/**
  * PUT /api/tasks/reorder-subtasks
  * Reorder subtasks within a parent task
  * Body: { parent_task_id, subtask_orders: [{ id, sort_order }, ...] }

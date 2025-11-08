@@ -92,6 +92,7 @@ const TodayPlan: React.FC<TodayPlanProps> = ({
                 projects={projects}
                 onToggleToday={onToggleToday}
                 onTaskCompletionToggle={onTaskCompletionToggle}
+                enableDragAndDrop={true}
             />
         </>
     );

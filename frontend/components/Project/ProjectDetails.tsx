@@ -1294,6 +1294,8 @@ const ProjectDetails: React.FC = () => {
                                                                 hideProjectName={true}
                                                                 onToggleToday={handleToggleToday}
                                                                 showCompletedTasks={showCompleted}
+                                                                enableDragAndDrop={true}
+                                                                projectId={project?.id}
                                                             />
                                                         </div>
                                                     )}
@@ -1321,6 +1323,8 @@ const ProjectDetails: React.FC = () => {
                                                     hideProjectName={true}
                                                     onToggleToday={handleToggleToday}
                                                     showCompletedTasks={showCompleted}
+                                                    enableDragAndDrop={true}
+                                                    projectId={project?.id}
                                                 />
                                             </div>
                                         </div>

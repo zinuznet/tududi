@@ -283,3 +283,24 @@ export const reorderSubtasks = async (
     await handleAuthResponse(response, 'Failed to reorder subtasks.');
     return await response.json();
 };
+
+/**
+ * Reorder main tasks (parent tasks without parent_task_id)
+ */
+export const reorderTasks = async (
+    taskOrders: Array<{ id: number; sort_order: number }>,
+    projectId?: number
+): Promise<{ success: boolean; tasks: Task[] }> => {
+    const response = await fetch('/api/tasks/reorder', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: getPostHeaders(),
+        body: JSON.stringify({
+            task_orders: taskOrders,
+            project_id: projectId,
+        }),
+    });
+
+    await handleAuthResponse(response, 'Failed to reorder tasks.');
+    return await response.json();
+};

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Task } from '../../../entities/Task';
 import TaskPriorityIcon from '../TaskPriorityIcon';
 import { toggleTaskCompletion } from '../../../utils/tasksService';
+import DraggableSubtasksList from '../DraggableSubtasksList';
 
 interface TaskSubtasksSectionProps {
     parentTaskId: number;
@@ -135,16 +136,14 @@ const TaskSubtasksSection: React.FC<TaskSubtasksSectionProps> = ({
         onSubtasksChange(updatedSubtasks);
     };
 
-    return (
-        <div ref={subtasksSectionRef} className="space-y-3">
-            {/* Existing Subtasks */}
-            {isLoading ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {t('loading.subtasks', 'Loading subtasks...')}
-                </div>
-            ) : subtasks.length > 0 ? (
-                <div className="space-y-1">
-                    {subtasks.map((subtask, index) => (
+    const handleSubtasksReordered = (reorderedSubtasks: Task[]) => {
+        onSubtasksChange(reorderedSubtasks);
+    };
+
+    const renderSubtask = (subtask: Task, isDragging: boolean) => {
+        const index = subtasks.findIndex((s) => s.id === subtask.id);
+
+        return (
                         <div
                             key={subtask.id || index}
                             className="rounded-lg shadow-sm bg-white dark:bg-gray-900 border-2 border-gray-50 dark:border-gray-800"
@@ -308,8 +307,22 @@ const TaskSubtasksSection: React.FC<TaskSubtasksSectionProps> = ({
                                 </div>
                             )}
                         </div>
-                    ))}
+        );
+    };
+
+    return (
+        <div ref={subtasksSectionRef} className="space-y-3">
+            {/* Existing Subtasks */}
+            {isLoading ? (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                    {t('loading.subtasks', 'Loading subtasks...')}
                 </div>
+            ) : subtasks.length > 0 ? (
+                <DraggableSubtasksList
+                    subtasks={subtasks}
+                    onSubtasksReordered={handleSubtasksReordered}
+                    renderSubtask={renderSubtask}
+                />
             ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
                     {t('subtasks.noSubtasks', 'No subtasks yet')}
