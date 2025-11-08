@@ -34,4 +34,8 @@ export interface Project {
     updated_at?: string;
     share_count?: number;
     is_shared?: boolean;
+    // Time tracking fields
+    default_task_hours?: number;
+    time_tolerance_percent?: number;
+    hourly_rate?: number;
 }

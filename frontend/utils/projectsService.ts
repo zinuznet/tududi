@@ -130,3 +130,59 @@ export const fetchProjectBySlug = async (uidSlug: string): Promise<Project> => {
     await handleAuthResponse(response, 'Failed to fetch project.');
     return await response.json();
 };
+
+// Time tracking interfaces
+export interface ProjectMetrics {
+    project: Project;
+    estimation: {
+        total_estimated_hours: number;
+        tasks_with_estimates: number;
+        tasks_without_estimates: number;
+    };
+    budget: {
+        total_budget_hours: number;
+        tolerance_percent: number;
+    };
+    actual: {
+        completed_tasks: number;
+        total_actual_hours: number;
+        average_actual_hours: number;
+    };
+    projection: {
+        remaining_tasks: number;
+        projected_total_hours: number;
+        variance_hours: number;
+        variance_percent: number;
+    };
+    health: {
+        status: 'green' | 'yellow' | 'red';
+        message: string;
+    };
+    financial?: {
+        hourly_rate: number;
+        estimated_revenue: number;
+        projected_cost: number;
+        projected_profit: number;
+        is_profitable: boolean;
+    };
+    tasks: Array<{
+        id: number;
+        uid: string;
+        name: string;
+        status: number;
+        estimated_hours: number | null;
+        actual_hours: number;
+        is_over_budget: boolean;
+    }>;
+    warnings: string[];
+}
+
+export const fetchProjectMetrics = async (projectId: number): Promise<ProjectMetrics> => {
+    const response = await fetch(`/api/project/${projectId}/metrics`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+    });
+
+    await handleAuthResponse(response, 'Failed to fetch project metrics.');
+    return await response.json();
+};

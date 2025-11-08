@@ -48,6 +48,8 @@ import SortFilterButton, { SortOption } from '../Shared/SortFilterButton';
 import LoadingSpinner from '../Shared/LoadingSpinner';
 import { usePersistedModal } from '../../hooks/usePersistedModal';
 import BannerBadge from '../Shared/BannerBadge';
+import ProjectTimeSettings from './ProjectTimeSettings';
+import ProjectMetricsPanel from './ProjectMetricsPanel';
 
 const ProjectDetails: React.FC = () => {
     const { uidSlug } = useParams<{ uidSlug: string }>();
@@ -88,7 +90,7 @@ const ProjectDetails: React.FC = () => {
     const [autoSuggestEnabled, setAutoSuggestEnabled] = useState(false);
     const hasCheckedAutoSuggest = useRef(false);
     const [orderBy, setOrderBy] = useState<string>('created_at:desc');
-    const [activeTab, setActiveTab] = useState<'tasks' | 'notes'>('tasks');
+    const [activeTab, setActiveTab] = useState<'tasks' | 'notes' | 'metrics'>('tasks');
 
     // Sort options for tasks
     const sortOptions: SortOption[] = [
@@ -995,6 +997,16 @@ const ProjectDetails: React.FC = () => {
                                         {notes.length > 0 ? notes.length : '0'}
                                     </span>
                                 </button>
+                                <button
+                                    onClick={() => setActiveTab('metrics')}
+                                    className={`flex items-center py-2 text-sm font-medium transition-colors ${
+                                        activeTab === 'metrics'
+                                            ? 'text-gray-900 dark:text-gray-100'
+                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                    }`}
+                                >
+                                    <span>{t('project.metrics', 'Metrics')}</span>
+                                </button>
                             </div>
 
                             {/* Inline Controls - Always visible for tasks tab */}
@@ -1072,6 +1084,16 @@ const ProjectDetails: React.FC = () => {
                                         {notes.length}
                                     </span>
                                 )}
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('metrics')}
+                                className={`flex items-center space-x-2 text-sm font-medium transition-colors ${
+                                    activeTab === 'metrics'
+                                        ? 'text-gray-900 dark:text-gray-100'
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                }`}
+                            >
+                                <span>{t('project.metrics', 'Metrics')}</span>
                             </button>
                         </div>
 
@@ -1233,6 +1255,28 @@ const ProjectDetails: React.FC = () => {
                                 </p>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Metrics Tab Content */}
+                {activeTab === 'metrics' && project.id && (
+                    <div className="transition-all duration-300 ease-in-out">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            {/* Time Settings */}
+                            <div>
+                                <ProjectTimeSettings
+                                    project={project}
+                                    onUpdate={(updatedProject) => {
+                                        setProject(updatedProject);
+                                    }}
+                                />
+                            </div>
+
+                            {/* Metrics Panel */}
+                            <div>
+                                <ProjectMetricsPanel project={project} />
+                            </div>
+                        </div>
                     </div>
                 )}
 
