@@ -38,8 +38,13 @@ export interface Task {
     estimated_hours?: number;
     actual_hours?: number;
     timer_started_at?: string | null;
+    // Energy and time-of-day scheduling
+    when_time?: WhenTimeType | null;
+    energy_level?: EnergyLevelType | null;
 }
 
+export type WhenTimeType = 'morning' | 'afternoon' | 'evening' | 'anytime';
+export type EnergyLevelType = 'low' | 'medium' | 'high';
 export type StatusType =
     | 'not_started'
     | 'in_progress'
