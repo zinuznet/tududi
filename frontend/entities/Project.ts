@@ -2,6 +2,7 @@ import { Area } from './Area';
 import { Tag } from './Tag';
 import { PriorityType, Task } from './Task';
 import { Note } from './Note';
+import { Section } from './Section';
 
 export type ProjectState =
     | 'idea'
@@ -25,6 +26,8 @@ export interface Project {
     Tasks?: Task[]; // Sequelize association naming (capitalized)
     notes?: Note[];
     Notes?: Note[]; // Sequelize association naming (capitalized)
+    sections?: Section[];
+    Sections?: Section[]; // Sequelize association naming (capitalized)
     due_date_at?: string | null;
     image_url?: string;
     task_show_completed?: boolean;

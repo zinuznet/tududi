@@ -31,6 +31,9 @@ export interface Task {
     subtasks?: Task[];
     Subtasks?: Task[]; // Handle API response case sensitivity (temporary)
     parent_child_logic_executed?: boolean; // Flag indicating if parent-child logic was executed during toggle
+    // Section and ordering fields
+    section_id?: number | null;
+    sort_order?: number;
     // Time tracking fields
     estimated_hours?: number;
     actual_hours?: number;
