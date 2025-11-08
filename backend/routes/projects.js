@@ -15,6 +15,7 @@ const {
     sequelize,
 } = require('../models');
 const permissionsService = require('../services/permissionsService');
+const { calculateProjectMetrics } = require('../services/projectTimeCalculator');
 const { Op } = require('sequelize');
 const { extractUidFromSlug } = require('../utils/slug-utils');
 const { validateTagName } = require('../services/tagsService');
@@ -895,5 +896,66 @@ router.delete(
         }
     }
 );
+
+/**
+ * @swagger
+ * /api/project/{id}/metrics:
+ *   get:
+ *     summary: Get time tracking metrics for a project
+ *     tags: [Projects, TimeTracking]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Project ID
+ *     responses:
+ *       200:
+ *         description: Project metrics retrieved successfully
+ *       404:
+ *         description: Project not found
+ */
+router.get('/project/:id/metrics', async (req, res) => {
+    try {
+        const projectId = req.params.id;
+        const userId = getAuthenticatedUserId(req);
+
+        // Check if project exists and user has access
+        const project = await Project.findOne({
+            where: { id: projectId },
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // Check permissions
+        const access = await permissionsService.getAccess(
+            userId,
+            'project',
+            project.uid
+        );
+        const isOwner = project.user_id === userId;
+        const canRead = isOwner || access === 'r' || access === 'rw' || access === 'admin';
+
+        if (!canRead) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        // Calculate metrics
+        const metrics = await calculateProjectMetrics(projectId, userId);
+
+        res.json(metrics);
+    } catch (error) {
+        logError('Error calculating project metrics:', error);
+        res.status(500).json({
+            error: 'Failed to calculate project metrics',
+            message: error.message,
+        });
+    }
+});
 
 module.exports = router;
