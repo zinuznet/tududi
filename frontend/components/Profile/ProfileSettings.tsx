@@ -79,6 +79,10 @@ interface Profile {
     timer_auto_pause_minutes: number;
     timer_reminder_interval_minutes: number;
     timer_notification_enabled: boolean;
+    work_days: number[];
+    work_hours_start: string;
+    work_hours_end: string;
+    work_hours_per_day: number;
 }
 
 interface TelegramBotInfo {
@@ -149,6 +153,10 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         timer_auto_pause_minutes: 30,
         timer_reminder_interval_minutes: 30,
         timer_notification_enabled: true,
+        work_days: [1, 2, 3, 4, 5], // Mon-Fri
+        work_hours_start: '09:00',
+        work_hours_end: '17:00',
+        work_hours_per_day: 8.0,
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
@@ -1924,6 +1932,109 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                                             </div>
                                         </div>
                                     )}
+                                </div>
+
+                                {/* Work Schedule Configuration */}
+                                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 mt-6">
+                                    <div className="mb-4">
+                                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            {t('profile.workSchedule', 'Work Schedule')}
+                                        </h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            {t('profile.workScheduleDescription', 'Define your working hours for realistic time planning')}
+                                        </p>
+                                    </div>
+
+                                    {/* Work Days Selection */}
+                                    <div className="mb-4">
+                                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                                            {t('profile.workDays', 'Work Days')}
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[
+                                                { value: 1, label: 'Mon' },
+                                                { value: 2, label: 'Tue' },
+                                                { value: 3, label: 'Wed' },
+                                                { value: 4, label: 'Thu' },
+                                                { value: 5, label: 'Fri' },
+                                                { value: 6, label: 'Sat' },
+                                                { value: 0, label: 'Sun' },
+                                            ].map((day) => {
+                                                const isSelected = (formData.work_days || []).includes(day.value);
+                                                return (
+                                                    <button
+                                                        key={day.value}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const currentDays = formData.work_days || [1, 2, 3, 4, 5];
+                                                            const newDays = isSelected
+                                                                ? currentDays.filter(d => d !== day.value)
+                                                                : [...currentDays, day.value].sort();
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                work_days: newDays,
+                                                            }));
+                                                        }}
+                                                        className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                                            isSelected
+                                                                ? 'bg-green-500 text-white'
+                                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                                        }`}
+                                                    >
+                                                        {t(`day.${day.label.toLowerCase()}`, day.label)}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Work Hours */}
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                                                {t('profile.workHoursStart', 'Start Time')}
+                                            </label>
+                                            <input
+                                                type="time"
+                                                name="work_hours_start"
+                                                value={formData.work_hours_start || '09:00'}
+                                                onChange={handleChange}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                                                {t('profile.workHoursEnd', 'End Time')}
+                                            </label>
+                                            <input
+                                                type="time"
+                                                name="work_hours_end"
+                                                value={formData.work_hours_end || '17:00'}
+                                                onChange={handleChange}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Work Hours Per Day */}
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                                            {t('profile.workHoursPerDay', 'Available Hours Per Day')}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            name="work_hours_per_day"
+                                            value={formData.work_hours_per_day || 8}
+                                            onChange={handleChange}
+                                            min="0.5"
+                                            max="24"
+                                            step="0.5"
+                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                        />
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            {t('profile.workHoursHelp', 'Your productive working hours (excluding breaks)')}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
