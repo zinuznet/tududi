@@ -1,5 +1,5 @@
 const express = require('express');
-const { Task, Tag, Project, TaskEvent, sequelize } = require('../models');
+const { Task, Tag, Project, TaskEvent, TimeEntry, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const permissionsService = require('../services/permissionsService');
 const { hasAccess } = require('../middleware/authorize');
@@ -3335,5 +3335,451 @@ router.post('/task/:id/split', async (req, res) => {
         res.status(500).json({ error: 'Failed to split task' });
     }
 });
+
+/**
+ * @swagger
+ * /api/task/{id}/timer/start:
+ *   post:
+ *     summary: Start timer for a task
+ *     tags: [Tasks, TimeTracking]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the task
+ *     responses:
+ *       200:
+ *         description: Timer started successfully
+ *       409:
+ *         description: Another timer is already running
+ *       403:
+ *         description: Forbidden (no access to task)
+ *       404:
+ *         description: Task not found
+ */
+router.post(
+    '/task/:id/timer/start',
+    hasAccess(
+        'rw',
+        'task',
+        async (req) => {
+            const t = await Task.findOne({
+                where: { id: req.params.id },
+                attributes: ['uid'],
+            });
+            return t?.uid;
+        },
+        { notFoundMessage: 'Task not found.' }
+    ),
+    async (req, res) => {
+        try {
+            const task = await Task.findOne({
+                where: { id: req.params.id },
+                attributes: ['id', 'uid', 'name', 'status', 'parent_task_id'],
+            });
+
+            if (!task) {
+                return res.status(404).json({ error: 'Task not found.' });
+            }
+
+            // Prevent timer on subtasks (time tracked on parent only)
+            if (task.parent_task_id) {
+                return res.status(400).json({
+                    error: 'Cannot start timer on subtask. Track time on the parent task instead.',
+                });
+            }
+
+            // Check if user already has an active timer
+            const activeTimer = await TimeEntry.findOne({
+                where: {
+                    user_id: req.currentUser.id,
+                    stopped_at: null,
+                },
+                include: [
+                    {
+                        model: Task,
+                        as: 'Task',
+                        attributes: ['id', 'uid', 'name'],
+                    },
+                ],
+            });
+
+            if (activeTimer) {
+                return res.status(409).json({
+                    error: 'Timer already running on another task',
+                    activeTimer: {
+                        task_id: activeTimer.Task.id,
+                        task_uid: activeTimer.Task.uid,
+                        task_name: activeTimer.Task.name,
+                        started_at: activeTimer.started_at,
+                        elapsed_seconds: Math.floor(
+                            (new Date() - new Date(activeTimer.started_at)) / 1000
+                        ),
+                    },
+                });
+            }
+
+            // Create new time entry
+            const now = new Date();
+            const timeEntry = await TimeEntry.create({
+                task_id: task.id,
+                user_id: req.currentUser.id,
+                started_at: now,
+                stopped_at: null,
+                duration_seconds: null,
+                is_manual: false,
+            });
+
+            // Update task status to IN_PROGRESS and set timer_started_at
+            await task.update({
+                status: Task.STATUS.IN_PROGRESS,
+                timer_started_at: now,
+            });
+
+            // Log status change event
+            await logStatusChange(
+                task.id,
+                req.currentUser.id,
+                task.status,
+                Task.STATUS.IN_PROGRESS,
+                { source: 'timer_start' }
+            );
+
+            res.json({
+                success: true,
+                timeEntry: {
+                    id: timeEntry.id,
+                    task_id: task.id,
+                    started_at: timeEntry.started_at,
+                },
+                task: {
+                    id: task.id,
+                    uid: task.uid,
+                    status: Task.STATUS.IN_PROGRESS,
+                    timer_started_at: now,
+                },
+            });
+        } catch (error) {
+            logError('Error starting timer:', error);
+            res.status(500).json({ error: 'Failed to start timer' });
+        }
+    }
+);
+
+/**
+ * @swagger
+ * /api/task/{id}/timer/stop:
+ *   post:
+ *     summary: Stop timer for a task
+ *     tags: [Tasks, TimeTracking]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the task
+ *     responses:
+ *       200:
+ *         description: Timer stopped successfully
+ *       404:
+ *         description: Task or active timer not found
+ */
+router.post(
+    '/task/:id/timer/stop',
+    hasAccess(
+        'rw',
+        'task',
+        async (req) => {
+            const t = await Task.findOne({
+                where: { id: req.params.id },
+                attributes: ['uid'],
+            });
+            return t?.uid;
+        },
+        { notFoundMessage: 'Task not found.' }
+    ),
+    async (req, res) => {
+        try {
+            const task = await Task.findOne({
+                where: { id: req.params.id },
+                attributes: ['id', 'uid', 'name', 'status', 'timer_started_at'],
+            });
+
+            if (!task) {
+                return res.status(404).json({ error: 'Task not found.' });
+            }
+
+            // Find active time entry for this task and user
+            const activeEntry = await TimeEntry.findOne({
+                where: {
+                    task_id: task.id,
+                    user_id: req.currentUser.id,
+                    stopped_at: null,
+                },
+                order: [['started_at', 'DESC']],
+            });
+
+            if (!activeEntry) {
+                return res.status(404).json({
+                    error: 'No active timer found for this task',
+                });
+            }
+
+            // Stop the timer
+            const now = new Date();
+            const durationSeconds = Math.floor(
+                (now - new Date(activeEntry.started_at)) / 1000
+            );
+
+            await activeEntry.update({
+                stopped_at: now,
+                duration_seconds: durationSeconds,
+            });
+
+            // Update task - clear timer_started_at
+            await task.update({
+                timer_started_at: null,
+            });
+
+            // Calculate total actual hours for this task
+            const actualHours = await TimeEntry.calculateActualHours(task.id);
+
+            res.json({
+                success: true,
+                timeEntry: {
+                    id: activeEntry.id,
+                    task_id: task.id,
+                    started_at: activeEntry.started_at,
+                    stopped_at: now,
+                    duration_seconds: durationSeconds,
+                    duration_hours: durationSeconds / 3600,
+                },
+                task: {
+                    id: task.id,
+                    uid: task.uid,
+                    timer_started_at: null,
+                    actual_hours: actualHours,
+                },
+            });
+        } catch (error) {
+            logError('Error stopping timer:', error);
+            res.status(500).json({ error: 'Failed to stop timer' });
+        }
+    }
+);
+
+/**
+ * @swagger
+ * /api/task/{id}/time-entries:
+ *   get:
+ *     summary: Get time entries history for a task
+ *     tags: [Tasks, TimeTracking]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Time entries retrieved successfully
+ */
+router.get(
+    '/task/:id/time-entries',
+    hasAccess(
+        'r',
+        'task',
+        async (req) => {
+            const t = await Task.findOne({
+                where: { id: req.params.id },
+                attributes: ['uid'],
+            });
+            return t?.uid;
+        },
+        { notFoundMessage: 'Task not found.' }
+    ),
+    async (req, res) => {
+        try {
+            const task = await Task.findByPk(req.params.id);
+
+            if (!task) {
+                return res.status(404).json({ error: 'Task not found.' });
+            }
+
+            const timeEntries = await TimeEntry.findAll({
+                where: { task_id: task.id },
+                order: [['started_at', 'DESC']],
+                attributes: [
+                    'id',
+                    'started_at',
+                    'stopped_at',
+                    'duration_seconds',
+                    'note',
+                    'is_manual',
+                    'created_at',
+                ],
+            });
+
+            // Calculate total actual hours
+            const actualHours = await TimeEntry.calculateActualHours(task.id);
+
+            res.json({
+                timeEntries: timeEntries.map((entry) => ({
+                    id: entry.id,
+                    started_at: entry.started_at,
+                    stopped_at: entry.stopped_at,
+                    duration_seconds: entry.duration_seconds,
+                    duration_hours: entry.duration_seconds
+                        ? entry.duration_seconds / 3600
+                        : null,
+                    note: entry.note,
+                    is_manual: entry.is_manual,
+                    is_active: entry.stopped_at === null,
+                    created_at: entry.created_at,
+                })),
+                summary: {
+                    total_entries: timeEntries.length,
+                    actual_hours: actualHours,
+                    active_timer: timeEntries.find((e) => e.stopped_at === null)
+                        ? true
+                        : false,
+                },
+            });
+        } catch (error) {
+            logError('Error fetching time entries:', error);
+            res.status(500).json({ error: 'Failed to fetch time entries' });
+        }
+    }
+);
+
+/**
+ * @swagger
+ * /api/task/{id}/time-entry:
+ *   post:
+ *     summary: Create manual time entry (for forgotten timers)
+ *     tags: [Tasks, TimeTracking]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - started_at
+ *               - stopped_at
+ *             properties:
+ *               started_at:
+ *                 type: string
+ *                 format: date-time
+ *               stopped_at:
+ *                 type: string
+ *                 format: date-time
+ *               note:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Manual time entry created
+ */
+router.post(
+    '/task/:id/time-entry',
+    hasAccess(
+        'rw',
+        'task',
+        async (req) => {
+            const t = await Task.findOne({
+                where: { id: req.params.id },
+                attributes: ['uid'],
+            });
+            return t?.uid;
+        },
+        { notFoundMessage: 'Task not found.' }
+    ),
+    async (req, res) => {
+        try {
+            const { started_at, stopped_at, note } = req.body;
+
+            if (!started_at || !stopped_at) {
+                return res.status(400).json({
+                    error: 'Both started_at and stopped_at are required',
+                });
+            }
+
+            const task = await Task.findByPk(req.params.id);
+
+            if (!task) {
+                return res.status(404).json({ error: 'Task not found.' });
+            }
+
+            // Prevent manual entry on subtasks
+            if (task.parent_task_id) {
+                return res.status(400).json({
+                    error: 'Cannot add time entry to subtask. Add to parent task instead.',
+                });
+            }
+
+            const startDate = new Date(started_at);
+            const stopDate = new Date(stopped_at);
+
+            if (startDate >= stopDate) {
+                return res.status(400).json({
+                    error: 'stopped_at must be after started_at',
+                });
+            }
+
+            const durationSeconds = Math.floor((stopDate - startDate) / 1000);
+
+            const timeEntry = await TimeEntry.create({
+                task_id: task.id,
+                user_id: req.currentUser.id,
+                started_at: startDate,
+                stopped_at: stopDate,
+                duration_seconds: durationSeconds,
+                note: note || null,
+                is_manual: true,
+            });
+
+            // Calculate updated actual hours
+            const actualHours = await TimeEntry.calculateActualHours(task.id);
+
+            res.status(201).json({
+                success: true,
+                timeEntry: {
+                    id: timeEntry.id,
+                    started_at: timeEntry.started_at,
+                    stopped_at: timeEntry.stopped_at,
+                    duration_seconds: durationSeconds,
+                    duration_hours: durationSeconds / 3600,
+                    note: timeEntry.note,
+                    is_manual: true,
+                },
+                task: {
+                    id: task.id,
+                    uid: task.uid,
+                    actual_hours: actualHours,
+                },
+            });
+        } catch (error) {
+            logError('Error creating manual time entry:', error);
+            res.status(500).json({ error: 'Failed to create time entry' });
+        }
+    }
+);
 
 module.exports = router;
