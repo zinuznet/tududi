@@ -729,6 +729,113 @@ async function filterTasksByParams(params, userId, userTimezone) {
 }
 
 // Compute task metrics
+/**
+ * Calculate time tracking metrics for today
+ */
+async function calculateTodayTimeTracking(userId, userTimezone = 'UTC') {
+    const safeTimezone = getSafeTimezone(userTimezone);
+    const todayBounds = getTodayBoundsInUTC(safeTimezone);
+
+    // 1. Find active timer (if any)
+    const activeTimer = await TimeEntry.findOne({
+        where: {
+            user_id: userId,
+            stopped_at: null,
+        },
+        include: [
+            {
+                model: Task,
+                as: 'Task',
+                include: [
+                    {
+                        model: Tag,
+                        attributes: ['id', 'name', 'uid'],
+                        through: { attributes: [] },
+                        required: false,
+                    },
+                    {
+                        model: Project,
+                        attributes: ['id', 'name', 'uid'],
+                        required: false,
+                    },
+                ],
+            },
+        ],
+    });
+
+    // 2. Calculate total hours tracked today (completed time entries only)
+    const todayTimeEntries = await TimeEntry.findAll({
+        where: {
+            user_id: userId,
+            stopped_at: {
+                [Op.ne]: null,
+                [Op.gte]: todayBounds.start,
+                [Op.lte]: todayBounds.end,
+            },
+        },
+        include: [
+            {
+                model: Task,
+                as: 'Task',
+                include: [
+                    {
+                        model: Project,
+                        attributes: ['id', 'name', 'uid'],
+                        required: false,
+                    },
+                ],
+            },
+        ],
+    });
+
+    const totalSeconds = todayTimeEntries.reduce(
+        (sum, entry) => sum + (entry.duration_seconds || 0),
+        0
+    );
+    const totalHoursToday = totalSeconds / 3600;
+
+    // 3. Calculate breakdown by project
+    const projectMap = new Map();
+
+    for (const entry of todayTimeEntries) {
+        const project = entry.Task?.Project;
+        const projectId = project?.id || null;
+        const projectName = project?.name || 'No Project';
+        const projectUid = project?.uid || null;
+
+        if (!projectMap.has(projectId)) {
+            projectMap.set(projectId, {
+                project_id: projectId,
+                project_name: projectName,
+                project_uid: projectUid,
+                total_hours: 0,
+                task_count: new Set(),
+            });
+        }
+
+        const breakdown = projectMap.get(projectId);
+        breakdown.total_hours += (entry.duration_seconds || 0) / 3600;
+        breakdown.task_count.add(entry.task_id);
+    }
+
+    const projectBreakdown = Array.from(projectMap.values()).map((item) => ({
+        project_id: item.project_id,
+        project_name: item.project_name,
+        project_uid: item.project_uid,
+        total_hours: parseFloat(item.total_hours.toFixed(2)),
+        task_count: item.task_count.size,
+    }));
+
+    // Sort by total hours descending
+    projectBreakdown.sort((a, b) => b.total_hours - a.total_hours);
+
+    return {
+        active_timer_task: activeTimer?.Task || null,
+        total_hours_today: parseFloat(totalHoursToday.toFixed(2)),
+        project_breakdown: projectBreakdown,
+    };
+}
+
 async function computeTaskMetrics(userId, userTimezone = 'UTC') {
     const visibleTasksWhere =
         await permissionsService.ownershipOrPermissionWhere('task', userId);
@@ -1173,6 +1280,9 @@ async function computeTaskMetrics(userId, userTimezone = 'UTC') {
         weeklyData.push(dayData);
     }
 
+    // TIME TRACKING: Calculate today's time tracking metrics
+    const timeTracking = await calculateTodayTimeTracking(userId, userTimezone);
+
     return {
         total_open_tasks: totalOpenTasks,
         tasks_pending_over_month: tasksPendingOverMonth,
@@ -1183,6 +1293,7 @@ async function computeTaskMetrics(userId, userTimezone = 'UTC') {
         suggested_tasks: suggestedTasks,
         tasks_completed_today: tasksCompletedToday,
         weekly_completions: weeklyData,
+        time_tracking: timeTracking,
     };
 }
 
@@ -1380,6 +1491,19 @@ router.get('/tasks', async (req, res) => {
                     })
                 ),
                 weekly_completions: metrics.weekly_completions,
+                time_tracking: metrics.time_tracking
+                    ? {
+                          active_timer_task: metrics.time_tracking.active_timer_task
+                              ? await serializeTask(
+                                    metrics.time_tracking.active_timer_task,
+                                    req.currentUser.timezone,
+                                    serializationOptions
+                                )
+                              : null,
+                          total_hours_today: metrics.time_tracking.total_hours_today,
+                          project_breakdown: metrics.time_tracking.project_breakdown,
+                      }
+                    : null,
             },
         };
 

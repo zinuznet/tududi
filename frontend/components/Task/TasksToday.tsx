@@ -31,6 +31,8 @@ import ProductivityAssistant from '../Productivity/ProductivityAssistant';
 import NextTaskSuggestion from './NextTaskSuggestion';
 import WeeklyCompletionChart from './WeeklyCompletionChart';
 import TodaySettingsDropdown from './TodaySettingsDropdown';
+import ActiveTimerWidget from './ActiveTimerWidget';
+import DailyTimeBreakdown from './DailyTimeBreakdown';
 
 const getLocale = (language: string) => {
     switch (language) {
@@ -103,6 +105,11 @@ const TasksToday: React.FC = () => {
         suggested_tasks: [],
         tasks_completed_today: [],
         weekly_completions: [],
+        time_tracking: {
+            active_timer_task: null,
+            total_hours_today: 0,
+            project_breakdown: [],
+        },
     });
 
     // Helper function to get completion trend vs average
@@ -768,6 +775,30 @@ const TasksToday: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Active Timer Widget */}
+                {metrics.time_tracking?.active_timer_task && (
+                    <ActiveTimerWidget
+                        activeTask={metrics.time_tracking.active_timer_task}
+                        onTimerStopped={async () => {
+                            // Reload tasks and metrics after stopping timer
+                            const { tasks: updatedTasks, metrics: updatedMetrics } =
+                                await fetchTasks('?type=today');
+                            if (isMounted.current) {
+                                useStore.getState().tasksStore.setTasks(updatedTasks);
+                                setMetrics(updatedMetrics);
+                            }
+                        }}
+                    />
+                )}
+
+                {/* Daily Time Breakdown */}
+                {metrics.time_tracking && (
+                    <DailyTimeBreakdown
+                        totalHours={metrics.time_tracking.total_hours_today}
+                        projectBreakdown={metrics.time_tracking.project_breakdown}
+                    />
+                )}
 
                 {/* Metrics Section - Always reserve space to prevent layout shift */}
                 {!isSettingsLoaded ? (
