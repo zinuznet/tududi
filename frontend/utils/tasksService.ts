@@ -262,3 +262,24 @@ export const createManualTimeEntry = async (
     const result = await response.json();
     return result.time_entry;
 };
+
+/**
+ * Reorder subtasks within a parent task
+ */
+export const reorderSubtasks = async (
+    parentTaskId: number,
+    subtaskOrders: Array<{ id: number; sort_order: number }>
+): Promise<{ success: boolean; subtasks: Task[] }> => {
+    const response = await fetch('/api/tasks/reorder-subtasks', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: getPostHeaders(),
+        body: JSON.stringify({
+            parent_task_id: parentTaskId,
+            subtask_orders: subtaskOrders,
+        }),
+    });
+
+    await handleAuthResponse(response, 'Failed to reorder subtasks.');
+    return await response.json();
+};

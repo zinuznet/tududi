@@ -3944,4 +3944,67 @@ router.post(
     }
 );
 
+/**
+ * PUT /api/tasks/reorder-subtasks
+ * Reorder subtasks within a parent task
+ * Body: { parent_task_id, subtask_orders: [{ id, sort_order }, ...] }
+ */
+router.put('/tasks/reorder-subtasks', async (req, res) => {
+    const { parent_task_id, subtask_orders } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!parent_task_id || !Array.isArray(subtask_orders)) {
+        return res.status(400).json({
+            error: 'parent_task_id and subtask_orders array are required',
+        });
+    }
+
+    const transaction = await sequelize.transaction();
+
+    try {
+        // Verify parent task ownership
+        const parentTask = await Task.findOne({
+            where: { id: parent_task_id, user_id: userId },
+        });
+
+        if (!parentTask) {
+            await transaction.rollback();
+            return res.status(404).json({ error: 'Parent task not found' });
+        }
+
+        // Update each subtask's sort_order
+        for (const { id, sort_order } of subtask_orders) {
+            await Task.update(
+                { sort_order },
+                {
+                    where: {
+                        id,
+                        parent_task_id, // Ensure subtask belongs to this parent
+                        user_id: userId, // Ensure ownership
+                    },
+                    transaction,
+                }
+            );
+        }
+
+        await transaction.commit();
+
+        // Fetch updated subtasks
+        const subtasks = await Task.findAll({
+            where: { parent_task_id },
+            order: [['sort_order', 'ASC']],
+        });
+
+        res.json({ success: true, subtasks });
+    } catch (error) {
+        await transaction.rollback();
+        logError('Error reordering subtasks:', error);
+        res.status(500).json({ error: 'Failed to reorder subtasks' });
+    }
+});
+
 module.exports = router;
