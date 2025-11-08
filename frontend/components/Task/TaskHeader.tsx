@@ -13,6 +13,7 @@ import {
 import { TagIcon, FolderIcon } from '@heroicons/react/24/solid';
 import { useTranslation } from 'react-i18next';
 import TaskPriorityIcon from './TaskPriorityIcon';
+import ActiveTimerIndicator from './ActiveTimerIndicator';
 import { Project } from '../../entities/Project';
 import { Task, StatusType } from '../../entities/Task';
 import { fetchSubtasks } from '../../utils/tasksService';
@@ -218,10 +219,13 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
                         {isUpcomingView ? (
                             <div className="w-full">
                                 {/* Full width title that wraps */}
-                                <div className="w-full mb-0.5">
+                                <div className="w-full mb-0.5 flex items-center space-x-2">
                                     <span className="text-sm font-normal text-gray-900 dark:text-gray-300 dark:font-light break-words tracking-tight">
                                         {task.original_name || task.name}
                                     </span>
+                                    {task.timer_started_at && (
+                                        <ActiveTimerIndicator isActive={true} size="sm" />
+                                    )}
                                 </div>
                                 {/* Show project and tags info in upcoming view */}
                                 {project && !hideProjectName && (
@@ -313,10 +317,13 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
                                 )}
                             </div>
                         ) : (
-                            <div className="flex items-center">
+                            <div className="flex items-center space-x-2">
                                 <span className="text-md font-normal text-gray-900 dark:text-gray-300 dark:font-light">
                                     {task.original_name || task.name}
                                 </span>
+                                {task.timer_started_at && (
+                                    <ActiveTimerIndicator isActive={true} size="sm" />
+                                )}
                             </div>
                         )}
                         {/* Project, tags, due date, and recurrence in same row, with spacing when they exist */}

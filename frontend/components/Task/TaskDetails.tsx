@@ -36,6 +36,8 @@ import TaskPriorityIcon from './TaskPriorityIcon';
 import LoadingScreen from '../Shared/LoadingScreen';
 import MarkdownRenderer from '../Shared/MarkdownRenderer';
 import TaskTimeline from './TaskTimeline';
+import TaskTimerWidget from './TaskTimerWidget';
+import TimeEntryHistory from './TimeEntryHistory';
 import { isTaskOverdue } from '../../utils/dateUtils';
 
 const TaskDetails: React.FC = () => {
@@ -1063,16 +1065,88 @@ const TaskDetails: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Right Column - Recent Activity */}
-                        <div>
-                            <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                                {t('task.recentActivity', 'Recent Activity')}
-                            </h4>
-                            <div className="rounded-lg shadow-sm bg-white dark:bg-gray-900 border-2 border-gray-50 dark:border-gray-800 p-6">
-                                <TaskTimeline
-                                    taskUid={task.uid}
-                                    refreshKey={timelineRefreshKey}
-                                />
+                        {/* Right Column - Timer, Time Entries, and Recent Activity */}
+                        <div className="space-y-6">
+                            {/* Time Tracking Widget */}
+                            {task.id && !task.parent_task_id && (
+                                <div>
+                                    <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                                        {t('timer.title', 'Time Tracking')}
+                                    </h4>
+                                    <TaskTimerWidget
+                                        task={task}
+                                        onTimerUpdate={(updatedTask) => {
+                                            // Update task in global store
+                                            const existingIndex =
+                                                tasksStore.tasks.findIndex(
+                                                    (t: Task) => t.uid === uid
+                                                );
+                                            if (existingIndex >= 0) {
+                                                const updatedTasks = [
+                                                    ...tasksStore.tasks,
+                                                ];
+                                                updatedTasks[existingIndex] =
+                                                    updatedTask;
+                                                tasksStore.setTasks(updatedTasks);
+                                            }
+                                            // Refresh timeline
+                                            setTimelineRefreshKey(
+                                                (prev) => prev + 1
+                                            );
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Time Entry History */}
+                            {task.id && !task.parent_task_id && (
+                                <div>
+                                    <TimeEntryHistory
+                                        taskId={task.id}
+                                        onTimeEntryAdded={() => {
+                                            // Refresh task data to update actual_hours
+                                            if (uid) {
+                                                fetchTaskByUid(uid).then(
+                                                    (updatedTask) => {
+                                                        const existingIndex =
+                                                            tasksStore.tasks.findIndex(
+                                                                (t: Task) =>
+                                                                    t.uid === uid
+                                                            );
+                                                        if (existingIndex >= 0) {
+                                                            const updatedTasks = [
+                                                                ...tasksStore.tasks,
+                                                            ];
+                                                            updatedTasks[
+                                                                existingIndex
+                                                            ] = updatedTask;
+                                                            tasksStore.setTasks(
+                                                                updatedTasks
+                                                            );
+                                                        }
+                                                    }
+                                                );
+                                            }
+                                            // Refresh timeline
+                                            setTimelineRefreshKey(
+                                                (prev) => prev + 1
+                                            );
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Recent Activity */}
+                            <div>
+                                <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                                    {t('task.recentActivity', 'Recent Activity')}
+                                </h4>
+                                <div className="rounded-lg shadow-sm bg-white dark:bg-gray-900 border-2 border-gray-50 dark:border-gray-800 p-6">
+                                    <TaskTimeline
+                                        taskUid={task.uid}
+                                        refreshKey={timelineRefreshKey}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>

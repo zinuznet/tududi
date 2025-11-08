@@ -179,3 +179,86 @@ export const splitTask = async (
     await handleAuthResponse(response, 'Failed to split task.');
     return await response.json();
 };
+
+// Time tracking API functions
+
+export interface TimeEntry {
+    id: number;
+    task_id: number;
+    user_id: number;
+    started_at: string;
+    stopped_at: string | null;
+    duration_seconds: number | null;
+    note?: string;
+    is_manual: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface StartTimerResponse {
+    message: string;
+    task: Task;
+    timeEntry: TimeEntry;
+}
+
+export interface StopTimerResponse {
+    message: string;
+    task: Task;
+    timeEntry: TimeEntry;
+    duration_seconds: number;
+}
+
+export const startTimer = async (taskId: number): Promise<StartTimerResponse> => {
+    const response = await fetch(`/api/task/${taskId}/timer/start`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: getPostHeaders(),
+    });
+
+    await handleAuthResponse(response, 'Failed to start timer.');
+    return await response.json();
+};
+
+export const stopTimer = async (taskId: number): Promise<StopTimerResponse> => {
+    const response = await fetch(`/api/task/${taskId}/timer/stop`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: getPostHeaders(),
+    });
+
+    await handleAuthResponse(response, 'Failed to stop timer.');
+    return await response.json();
+};
+
+export const fetchTimeEntries = async (taskId: number): Promise<TimeEntry[]> => {
+    const response = await fetch(`/api/task/${taskId}/time-entries`, {
+        credentials: 'include',
+        headers: getDefaultHeaders(),
+    });
+
+    await handleAuthResponse(response, 'Failed to fetch time entries.');
+    const result = await response.json();
+    return result.time_entries || [];
+};
+
+export interface CreateTimeEntryData {
+    started_at: string;
+    stopped_at: string;
+    note?: string;
+}
+
+export const createManualTimeEntry = async (
+    taskId: number,
+    entryData: CreateTimeEntryData
+): Promise<TimeEntry> => {
+    const response = await fetch(`/api/task/${taskId}/time-entry`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: getPostHeaders(),
+        body: JSON.stringify(entryData),
+    });
+
+    await handleAuthResponse(response, 'Failed to create time entry.');
+    const result = await response.json();
+    return result.time_entry;
+};
