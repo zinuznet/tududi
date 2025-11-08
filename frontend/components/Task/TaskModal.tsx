@@ -95,6 +95,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
         dueDate: false,
         whenTime: false,
         energyLevel: false,
+        timeEstimate: false,
         recurrence: false,
         subtasks: false,
     });
@@ -835,6 +836,48 @@ const TaskModal: React.FC<TaskModalProps> = ({
                                                     </div>
                                                 )}
 
+                                                {expandedSections.timeEstimate && (
+                                                    <div
+                                                        data-testid="timeestimate-section"
+                                                        data-state="expanded"
+                                                        className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-4 px-4"
+                                                    >
+                                                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                            {t(
+                                                                'forms.task.estimatedTime',
+                                                                'Estimated Time'
+                                                            )}
+                                                        </h3>
+                                                        <div className="flex items-center space-x-2">
+                                                            <input
+                                                                type="number"
+                                                                name="estimated_hours"
+                                                                value={formData.estimated_hours || ''}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                                                    setFormData({
+                                                                        ...formData,
+                                                                        estimated_hours: value,
+                                                                    });
+                                                                }}
+                                                                min="0"
+                                                                step="0.5"
+                                                                placeholder="0"
+                                                                className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            />
+                                                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                                                                {t('forms.task.hours', 'hours')}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                                            {t(
+                                                                'forms.task.estimatedTimeHelp',
+                                                                'How long do you think this task will take?'
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                )}
+
                                                 {expandedSections.recurrence && (
                                                     <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-4 px-4">
                                                         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -1041,6 +1084,27 @@ const TaskModal: React.FC<TaskModalProps> = ({
                                             >
                                                 <BoltIcon className="h-5 w-5" />
                                                 {formData.energy_level && (
+                                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></span>
+                                                )}
+                                            </button>
+
+                                            {/* Time Estimate Toggle */}
+                                            <button
+                                                onClick={() =>
+                                                    toggleSection('timeEstimate')
+                                                }
+                                                className={`relative p-2 rounded-full transition-colors ${
+                                                    expandedSections.timeEstimate
+                                                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                }`}
+                                                title={t(
+                                                    'forms.task.estimatedTime',
+                                                    'Estimated Time'
+                                                )}
+                                            >
+                                                <ClockIcon className="h-5 w-5" />
+                                                {formData.estimated_hours && (
                                                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></span>
                                                 )}
                                             </button>
