@@ -50,6 +50,7 @@ import { usePersistedModal } from '../../hooks/usePersistedModal';
 import BannerBadge from '../Shared/BannerBadge';
 import ProjectTimeSettings from './ProjectTimeSettings';
 import ProjectMetricsPanel from './ProjectMetricsPanel';
+import ProjectTimeReport from './ProjectTimeReport';
 
 const ProjectDetails: React.FC = () => {
     const { uidSlug } = useParams<{ uidSlug: string }>();
@@ -1276,6 +1277,11 @@ const ProjectDetails: React.FC = () => {
                             <div>
                                 <ProjectMetricsPanel project={project} />
                             </div>
+                        </div>
+
+                        {/* Time Report Panel */}
+                        <div className="mb-6">
+                            <ProjectTimeReport project={project} />
                         </div>
                     </div>
                 )}

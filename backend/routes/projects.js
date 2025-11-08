@@ -12,6 +12,7 @@ const {
     Note,
     User,
     Permission,
+    TimeEntry,
     sequelize,
 } = require('../models');
 const permissionsService = require('../services/permissionsService');
@@ -957,5 +958,261 @@ router.get('/project/:id/metrics', async (req, res) => {
         });
     }
 });
+
+/**
+ * @swagger
+ * /api/project/{uidSlug}/time-report:
+ *   get:
+ *     summary: Get detailed time report for a project
+ *     tags: [Projects, TimeTracking]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: uidSlug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Project UID or UID-slug
+ *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for report (YYYY-MM-DD)
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for report (YYYY-MM-DD)
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [json, csv]
+ *         description: Export format (default json)
+ *     responses:
+ *       200:
+ *         description: Time report generated successfully
+ *       404:
+ *         description: Project not found
+ */
+router.get(
+    '/project/:uidSlug/time-report',
+    hasAccess(
+        'ro',
+        'project',
+        async (req) => {
+            const uid = extractUidFromSlug(req.params.uidSlug);
+            const project = await Project.findOne({
+                where: { uid },
+                attributes: ['uid'],
+            });
+            return project ? project.uid : null;
+        },
+        { notFoundMessage: 'Project not found' }
+    ),
+    async (req, res) => {
+        try {
+            const uid = extractUidFromSlug(req.params.uidSlug);
+            const { start_date, end_date, format = 'json' } = req.query;
+            const userId = getAuthenticatedUserId(req);
+
+            // Find project
+            const project = await Project.findOne({
+                where: { uid },
+                attributes: ['id', 'uid', 'name', 'estimated_hours', 'hourly_rate'],
+            });
+
+            // Build date filter
+            const dateFilter = {};
+            if (start_date) {
+                dateFilter[Op.gte] = new Date(start_date);
+            }
+            if (end_date) {
+                const endDateTime = new Date(end_date);
+                endDateTime.setHours(23, 59, 59, 999); // End of day
+                dateFilter[Op.lte] = endDateTime;
+            }
+
+            // Get all tasks for this project
+            const tasks = await Task.findAll({
+                where: { project_id: project.id },
+                attributes: ['id', 'uid', 'name', 'estimated_hours'],
+            });
+
+            const taskIds = tasks.map((t) => t.id);
+            const taskMap = {};
+            tasks.forEach((t) => {
+                taskMap[t.id] = t;
+            });
+
+            // Build time entry query
+            const timeEntryWhere = {
+                task_id: { [Op.in]: taskIds },
+                stopped_at: { [Op.ne]: null }, // Only completed entries
+            };
+
+            if (Object.keys(dateFilter).length > 0) {
+                timeEntryWhere.started_at = dateFilter;
+            }
+
+            // Get all time entries
+            const entries = await TimeEntry.findAll({
+                where: timeEntryWhere,
+                include: [
+                    {
+                        model: Task,
+                        as: 'Task',
+                        attributes: ['id', 'uid', 'name'],
+                    },
+                    {
+                        model: User,
+                        as: 'User',
+                        attributes: ['id', 'name', 'email'],
+                    },
+                ],
+                order: [['started_at', 'DESC']],
+            });
+
+            // Calculate summary
+            const totalSeconds = entries.reduce(
+                (sum, entry) => sum + (entry.duration_seconds || 0),
+                0
+            );
+            const totalHours = totalSeconds / 3600;
+
+            // Format entries for output
+            const formattedEntries = entries.map((entry) => {
+                const task = entry.Task;
+                const user = entry.User;
+                const durationHours = (entry.duration_seconds || 0) / 3600;
+
+                return {
+                    entry_id: entry.id,
+                    task_uid: task.uid,
+                    task_name: task.name,
+                    user_name: user.name || user.email,
+                    started_at: entry.started_at,
+                    stopped_at: entry.stopped_at,
+                    duration_seconds: entry.duration_seconds,
+                    duration_hours: parseFloat(durationHours.toFixed(2)),
+                    is_manual: entry.is_manual,
+                    note: entry.note,
+                };
+            });
+
+            // Build report object
+            const report = {
+                project: {
+                    uid: project.uid,
+                    name: project.name,
+                    estimated_hours: project.estimated_hours,
+                    hourly_rate: project.hourly_rate,
+                },
+                filters: {
+                    start_date: start_date || null,
+                    end_date: end_date || null,
+                },
+                summary: {
+                    total_entries: entries.length,
+                    total_hours: parseFloat(totalHours.toFixed(2)),
+                    total_cost:
+                        project.hourly_rate
+                            ? parseFloat((totalHours * project.hourly_rate).toFixed(2))
+                            : null,
+                    budget_remaining:
+                        project.estimated_hours
+                            ? parseFloat(
+                                  (project.estimated_hours - totalHours).toFixed(2)
+                              )
+                            : null,
+                    budget_percentage:
+                        project.estimated_hours
+                            ? parseFloat(
+                                  ((totalHours / project.estimated_hours) * 100).toFixed(
+                                      2
+                                  )
+                              )
+                            : null,
+                },
+                entries: formattedEntries,
+            };
+
+            // Return based on format
+            if (format === 'csv') {
+                // Generate CSV
+                const csv = generateTimeReportCSV(report);
+                res.setHeader('Content-Type', 'text/csv');
+                res.setHeader(
+                    'Content-Disposition',
+                    `attachment; filename="time-report-${project.uid}-${Date.now()}.csv"`
+                );
+                res.send(csv);
+            } else {
+                // Return JSON
+                res.json(report);
+            }
+        } catch (error) {
+            logError('Error generating time report:', error);
+            res.status(500).json({
+                error: 'Failed to generate time report',
+                message: error.message,
+            });
+        }
+    }
+);
+
+/**
+ * Helper function to generate CSV from time report
+ */
+function generateTimeReportCSV(report) {
+    const lines = [];
+
+    // Header section
+    lines.push(`Project: ${report.project.name}`);
+    lines.push(`Project UID: ${report.project.uid}`);
+    lines.push(
+        `Report Period: ${report.filters.start_date || 'All time'} to ${report.filters.end_date || 'Present'}`
+    );
+    lines.push('');
+
+    // Summary section
+    lines.push('Summary');
+    lines.push(`Total Entries,${report.summary.total_entries}`);
+    lines.push(`Total Hours,${report.summary.total_hours}`);
+    if (report.summary.total_cost !== null) {
+        lines.push(`Total Cost,${report.summary.total_cost}`);
+    }
+    if (report.project.estimated_hours) {
+        lines.push(`Estimated Hours,${report.project.estimated_hours}`);
+        lines.push(`Budget Remaining,${report.summary.budget_remaining}`);
+        lines.push(`Budget Used %,${report.summary.budget_percentage}`);
+    }
+    lines.push('');
+
+    // Entries section
+    lines.push('Time Entries');
+    lines.push(
+        'Task UID,Task Name,User,Started At,Stopped At,Duration (hours),Is Manual,Note'
+    );
+
+    report.entries.forEach((entry) => {
+        const row = [
+            entry.task_uid,
+            `"${entry.task_name.replace(/"/g, '""')}"`, // Escape quotes in task name
+            `"${entry.user_name.replace(/"/g, '""')}"`,
+            entry.started_at,
+            entry.stopped_at,
+            entry.duration_hours,
+            entry.is_manual ? 'Yes' : 'No',
+            entry.note ? `"${entry.note.replace(/"/g, '""')}"` : '',
+        ];
+        lines.push(row.join(','));
+    });
+
+    return lines.join('\n');
+}
 
 module.exports = router;
