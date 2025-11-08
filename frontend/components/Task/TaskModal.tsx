@@ -370,11 +370,10 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 addNewTags(newTagNames);
             }
 
-            // If project name is empty, clear the project_id
+            // Build final form data
             const finalFormData = {
                 ...formData,
-                project_id:
-                    newProjectName.trim() === '' ? null : formData.project_id,
+                project_id: formData.project_id,
                 tags: tags.map((tag) => ({ name: tag })),
                 subtasks: subtasks,
             };
