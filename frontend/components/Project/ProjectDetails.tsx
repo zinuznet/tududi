@@ -17,11 +17,13 @@ import {
 } from '@heroicons/react/24/outline';
 import TaskList from '../Task/TaskList';
 import ProjectModal from '../Project/ProjectModal';
+import SectionHeader from '../Project/SectionHeader';
 import ConfirmDialog from '../Shared/ConfirmDialog';
 import NoteModal from '../Note/NoteModal';
 import { useStore } from '../../store/useStore';
 import NewTask from '../Task/NewTask';
 import { Project } from '../../entities/Project';
+import { Section } from '../../entities/Section';
 import NoteCard from '../Shared/NoteCard';
 import { Task } from '../../entities/Task';
 import { Note } from '../../entities/Note';
@@ -41,6 +43,11 @@ import {
     deleteNote as apiDeleteNote,
 } from '../../utils/notesService';
 import { createNote } from '../../utils/notesService';
+import {
+    createSection,
+    updateSection,
+    deleteSection,
+} from '../../utils/sectionsService';
 import { isAuthError } from '../../utils/authUtils';
 import { getAutoSuggestNextActionsEnabled } from '../../utils/profileService';
 import AutoSuggestNextActionBox from './AutoSuggestNextActionBox';
@@ -72,6 +79,7 @@ const ProjectDetails: React.FC = () => {
     // Use local state to isolate from global store changes that cause remounting
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [sections, setSections] = useState<Section[]>([]);
 
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(false);
@@ -183,6 +191,7 @@ const ProjectDetails: React.FC = () => {
                 const projectData = await fetchProjectBySlug(uidSlug);
                 setProject(projectData);
                 setTasks(projectData.tasks || projectData.Tasks || []);
+                setSections(projectData.sections || projectData.Sections || []);
 
                 // Load saved preferences from project data
                 if (projectData.task_show_completed !== undefined) {
@@ -381,6 +390,7 @@ const ProjectDetails: React.FC = () => {
                     const projectData = await fetchProjectBySlug(uidSlug);
                     setProject(projectData);
                     setTasks(projectData.tasks || projectData.Tasks || []);
+                    setSections(projectData.sections || projectData.Sections || []);
                     const fetchedNotes =
                         projectData.notes || projectData.Notes || [];
 
@@ -638,6 +648,57 @@ const ProjectDetails: React.FC = () => {
         }
     };
 
+    // Section handlers
+    const handleCreateSection = async (name: string) => {
+        if (!project?.id) return;
+        try {
+            const { section } = await createSection(project.id, name);
+            setSections([...sections, section].sort((a, b) => a.sort_order - b.sort_order));
+            showSuccessToast(t('section.created', 'Section created successfully'));
+        } catch (error) {
+            // Error handled by service
+        }
+    };
+
+    const handleToggleSectionCollapse = async (sectionId: number, collapsed: boolean) => {
+        try {
+            await updateSection(sectionId, { collapsed });
+            setSections(
+                sections.map((s) => (s.id === sectionId ? { ...s, collapsed } : s))
+            );
+        } catch (error) {
+            // Error handled by service
+        }
+    };
+
+    const handleRenameSection = async (sectionId: number, newName: string) => {
+        try {
+            await updateSection(sectionId, { name: newName });
+            setSections(
+                sections.map((s) => (s.id === sectionId ? { ...s, name: newName } : s))
+            );
+            showSuccessToast(t('section.renamed', 'Section renamed successfully'));
+        } catch (error) {
+            // Error handled by service
+        }
+    };
+
+    const handleDeleteSection = async (sectionId: number) => {
+        try {
+            await deleteSection(sectionId);
+            setSections(sections.filter((s) => s.id !== sectionId));
+            // Update tasks to remove section_id
+            setTasks(
+                tasks.map((t) =>
+                    t.section_id === sectionId ? { ...t, section_id: null } : t
+                )
+            );
+            showSuccessToast(t('section.deleted', 'Section deleted successfully'));
+        } catch (error) {
+            // Error handled by service
+        }
+    };
+
     // Filter and sort tasks (backend filtering/sorting not working reliably)
     const displayTasks = useMemo(() => {
         // First, filter tasks based on completed state
@@ -715,6 +776,22 @@ const ProjectDetails: React.FC = () => {
 
         return sortedTasks;
     }, [tasks, showCompleted, orderBy]);
+
+    // Group tasks by section
+    const tasksBySection = useMemo(() => {
+        const grouped: Record<string, Task[]> = {};
+
+        // Group tasks by section_id
+        displayTasks.forEach((task) => {
+            const key = task.section_id?.toString() || 'no-section';
+            if (!grouped[key]) {
+                grouped[key] = [];
+            }
+            grouped[key].push(task);
+        });
+
+        return grouped;
+    }, [displayTasks]);
 
     // Function to get the appropriate icon for project state
     const getStateIcon = (state: string) => {
@@ -1171,17 +1248,83 @@ const ProjectDetails: React.FC = () => {
                         </div>
 
                         <div className="transition-all duration-300 ease-in-out overflow-visible">
+                            {/* Add Section Button */}
+                            <div className="mb-4">
+                                <button
+                                    onClick={() => {
+                                        const name = prompt(
+                                            t('section.enterName', 'Enter section name:')
+                                        );
+                                        if (name?.trim()) {
+                                            handleCreateSection(name.trim());
+                                        }
+                                    }}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    <PlusCircleIcon className="h-5 w-5" />
+                                    {t('section.addSection', 'Add Section')}
+                                </button>
+                            </div>
+
                             {displayTasks.length > 0 ? (
-                                <div className="transition-all duration-300 ease-in-out opacity-100 transform translate-y-0 overflow-visible">
-                                    <TaskList
-                                        tasks={displayTasks}
-                                        onTaskUpdate={handleTaskUpdate}
-                                        onTaskDelete={handleTaskDelete}
-                                        projects={allProjects}
-                                        hideProjectName={true}
-                                        onToggleToday={handleToggleToday}
-                                        showCompletedTasks={showCompleted}
-                                    />
+                                <div className="transition-all duration-300 ease-in-out opacity-100 transform translate-y-0 overflow-visible space-y-4">
+                                    {/* Render sections */}
+                                    {sections
+                                        .sort((a, b) => a.sort_order - b.sort_order)
+                                        .map((section) => {
+                                            const sectionTasks = tasksBySection[section.id.toString()] || [];
+                                            if (sectionTasks.length === 0 && section.collapsed) return null;
+
+                                            return (
+                                                <div key={section.id} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                                    <SectionHeader
+                                                        section={section}
+                                                        taskCount={sectionTasks.length}
+                                                        onToggleCollapse={handleToggleSectionCollapse}
+                                                        onRename={handleRenameSection}
+                                                        onDelete={handleDeleteSection}
+                                                    />
+                                                    {!section.collapsed && sectionTasks.length > 0 && (
+                                                        <div className="p-2">
+                                                            <TaskList
+                                                                tasks={sectionTasks}
+                                                                onTaskUpdate={handleTaskUpdate}
+                                                                onTaskDelete={handleTaskDelete}
+                                                                projects={allProjects}
+                                                                hideProjectName={true}
+                                                                onToggleToday={handleToggleToday}
+                                                                showCompletedTasks={showCompleted}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+
+                                    {/* Render "No Section" tasks */}
+                                    {tasksBySection['no-section'] && tasksBySection['no-section'].length > 0 && (
+                                        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                            <div className="py-3 px-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                                                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                                    {t('section.noSection', 'No Section')}
+                                                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                                                        ({tasksBySection['no-section'].length})
+                                                    </span>
+                                                </h3>
+                                            </div>
+                                            <div className="p-2">
+                                                <TaskList
+                                                    tasks={tasksBySection['no-section']}
+                                                    onTaskUpdate={handleTaskUpdate}
+                                                    onTaskDelete={handleTaskDelete}
+                                                    projects={allProjects}
+                                                    hideProjectName={true}
+                                                    onToggleToday={handleToggleToday}
+                                                    showCompletedTasks={showCompleted}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="transition-all duration-300 ease-in-out opacity-100 transform translate-y-0">
