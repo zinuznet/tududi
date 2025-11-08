@@ -10,6 +10,7 @@ const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const { sequelize } = require('./models');
 const { initializeTelegramPolling } = require('./services/telegramInitializer');
 const taskScheduler = require('./services/taskScheduler');
+const { startTimerCronJobs } = require('./cron/timerCron');
 const { setConfig, getConfig } = require('./config/config');
 const config = getConfig();
 const API_VERSION = process.env.API_VERSION || 'v1';
@@ -226,6 +227,9 @@ async function startServer() {
 
         // Initialize task scheduler
         await taskScheduler.initialize();
+
+        // Initialize timer CRON jobs (auto-pause, reminders)
+        startTimerCronJobs();
 
         const server = app.listen(config.port, config.host, () => {
             console.log(`Server running on port ${config.port}`);

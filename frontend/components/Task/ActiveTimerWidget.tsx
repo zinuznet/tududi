@@ -5,6 +5,7 @@ import { ClockIcon, StopIcon } from '@heroicons/react/24/outline';
 import { Task } from '../../entities/Task';
 import { stopTimer } from '../../utils/tasksService';
 import { useToast } from '../Shared/ToastContext';
+import { notificationService } from '../../services/notificationService';
 
 interface ActiveTimerWidgetProps {
     activeTask: Task | null;
@@ -67,6 +68,15 @@ const ActiveTimerWidget: React.FC<ActiveTimerWidgetProps> = ({
                     duration: durationMinutes,
                 })
             );
+
+            // Stop reminders and show notification
+            if (notificationService.isGranted() && activeTask.id) {
+                notificationService.stopTimerReminders(activeTask.id);
+                await notificationService.notifyTimerStopped(
+                    activeTask.name,
+                    durationMinutes
+                );
+            }
 
             onTimerStopped();
         } catch (error) {

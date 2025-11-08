@@ -72,6 +72,9 @@ interface Profile {
     productivity_assistant_enabled: boolean;
     next_task_suggestion_enabled: boolean;
     pomodoro_enabled: boolean;
+    timer_auto_pause_minutes: number;
+    timer_reminder_interval_minutes: number;
+    timer_notification_enabled: boolean;
 }
 
 interface TelegramBotInfo {
@@ -139,6 +142,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         productivity_assistant_enabled: true,
         next_task_suggestion_enabled: true,
         pomodoro_enabled: true,
+        timer_auto_pause_minutes: 30,
+        timer_reminder_interval_minutes: 30,
+        timer_notification_enabled: true,
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
@@ -1672,6 +1678,131 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                             </h3>
 
                             <div className="space-y-6">
+                                {/* Time Tracking Timer Settings */}
+                                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
+                                        <ClockIcon className="w-5 h-5 mr-2 text-blue-500" />
+                                        {t(
+                                            'profile.timerSettings',
+                                            'Time Tracking Timer'
+                                        )}
+                                    </h4>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                                        {t(
+                                            'profile.timerSettingsDescription',
+                                            'Configure auto-pause and reminder settings for your time tracking timer (ADHD-friendly features)'
+                                        )}
+                                    </p>
+
+                                    <div className="space-y-4">
+                                        {/* Auto-pause after inactivity */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                {t(
+                                                    'profile.autoPauseMinutes',
+                                                    'Auto-pause after inactivity'
+                                                )}
+                                            </label>
+                                            <div className="flex items-center space-x-3">
+                                                <input
+                                                    type="number"
+                                                    name="timer_auto_pause_minutes"
+                                                    value={
+                                                        formData.timer_auto_pause_minutes ||
+                                                        30
+                                                    }
+                                                    onChange={handleChange}
+                                                    min="1"
+                                                    max="180"
+                                                    className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                />
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                                    {t('common.minutes', 'minutes')}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                {t(
+                                                    'profile.autoPauseHelp',
+                                                    'Timer will automatically pause if no activity detected (helps when you forget to stop it)'
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        {/* Reminder interval */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                {t(
+                                                    'profile.reminderInterval',
+                                                    'Timer reminder interval'
+                                                )}
+                                            </label>
+                                            <div className="flex items-center space-x-3">
+                                                <input
+                                                    type="number"
+                                                    name="timer_reminder_interval_minutes"
+                                                    value={
+                                                        formData.timer_reminder_interval_minutes ||
+                                                        30
+                                                    }
+                                                    onChange={handleChange}
+                                                    min="5"
+                                                    max="120"
+                                                    className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                />
+                                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                                    {t('common.minutes', 'minutes')}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                {t(
+                                                    'profile.reminderIntervalHelp',
+                                                    'How often to remind you that timer is running'
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        {/* Enable notifications */}
+                                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    {t(
+                                                        'profile.timerNotifications',
+                                                        'Enable timer notifications'
+                                                    )}
+                                                </label>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    {t(
+                                                        'profile.timerNotificationsHelp',
+                                                        'Show browser notifications for timer reminders and auto-pause'
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <div
+                                                className={`relative inline-block w-12 h-6 transition-colors duration-200 ease-in-out rounded-full cursor-pointer ${
+                                                    formData.timer_notification_enabled
+                                                        ? 'bg-blue-500'
+                                                        : 'bg-gray-300 dark:bg-gray-600'
+                                                }`}
+                                                onClick={() => {
+                                                    setFormData((prev) => ({
+                                                        ...prev,
+                                                        timer_notification_enabled:
+                                                            !prev.timer_notification_enabled,
+                                                    }));
+                                                }}
+                                            >
+                                                <span
+                                                    className={`absolute left-0 top-0 bottom-0 m-1 w-4 h-4 transition-transform duration-200 ease-in-out transform bg-white rounded-full ${
+                                                        formData.timer_notification_enabled
+                                                            ? 'translate-x-6'
+                                                            : 'translate-x-0'
+                                                    }`}
+                                                ></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Pomodoro Timer */}
                                 <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                     <div>

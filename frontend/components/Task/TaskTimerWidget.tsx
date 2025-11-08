@@ -4,6 +4,7 @@ import { PlayIcon, StopIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { Task } from '../../entities/Task';
 import { startTimer, stopTimer } from '../../utils/tasksService';
 import { useToast } from '../Shared/ToastContext';
+import { notificationService } from '../../services/notificationService';
 
 interface TaskTimerWidgetProps {
     task: Task;
@@ -63,6 +64,14 @@ const TaskTimerWidget: React.FC<TaskTimerWidgetProps> = ({
     const handleStartTimer = async () => {
         if (!task.id) return;
 
+        // Request notification permission if not already granted
+        if (
+            notificationService.isSupported() &&
+            !notificationService.isGranted()
+        ) {
+            await notificationService.requestPermission();
+        }
+
         setIsLoading(true);
         try {
             const response = await startTimer(task.id);
@@ -72,6 +81,17 @@ const TaskTimerWidget: React.FC<TaskTimerWidgetProps> = ({
                     taskName: task.name,
                 })
             );
+
+            // Show notification and start reminders
+            if (notificationService.isGranted()) {
+                await notificationService.notifyTimerStarted(task.name);
+                // Start reminder interval (get from user settings - default 30min)
+                notificationService.startTimerReminders(
+                    task.id,
+                    task.name,
+                    30 // TODO: Get from user profile
+                );
+            }
         } catch (error: any) {
             console.error('Error starting timer:', error);
 
@@ -109,6 +129,15 @@ const TaskTimerWidget: React.FC<TaskTimerWidgetProps> = ({
                     { duration: durationMinutes }
                 )
             );
+
+            // Stop reminders and show notification
+            if (notificationService.isGranted() && task.id) {
+                notificationService.stopTimerReminders(task.id);
+                await notificationService.notifyTimerStopped(
+                    task.name,
+                    durationMinutes
+                );
+            }
         } catch (error) {
             console.error('Error stopping timer:', error);
             showErrorToast(t('timer.stopError', 'Failed to stop timer'));
