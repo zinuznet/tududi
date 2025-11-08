@@ -5,10 +5,21 @@ import { Task } from '../../entities/Task';
 import { startTimer, stopTimer } from '../../utils/tasksService';
 import { useToast } from '../Shared/ToastContext';
 import { notificationService } from '../../services/notificationService';
+import PomodoroTimer from '../Timer/PomodoroTimer';
 
 interface TaskTimerWidgetProps {
     task: Task;
     onTimerUpdate: (updatedTask: Task) => void;
+}
+
+type TimerMode = 'simple' | 'pomodoro';
+
+interface UserProfile {
+    pomodoro_enabled: boolean;
+    pomodoro_work_minutes: number;
+    pomodoro_short_break_minutes: number;
+    pomodoro_long_break_minutes: number;
+    pomodoro_sessions_until_long_break: number;
 }
 
 const TaskTimerWidget: React.FC<TaskTimerWidgetProps> = ({
@@ -20,6 +31,35 @@ const TaskTimerWidget: React.FC<TaskTimerWidgetProps> = ({
     const [isRunning, setIsRunning] = useState(!!task.timer_started_at);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const [timerMode, setTimerMode] = useState<TimerMode>('simple');
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+    // Fetch user profile for pomodoro settings
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            try {
+                const response = await fetch('/api/user', {
+                    credentials: 'include',
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (response.ok) {
+                    const profile = await response.json();
+                    setUserProfile({
+                        pomodoro_enabled: profile.pomodoro_enabled || false,
+                        pomodoro_work_minutes: profile.pomodoro_work_minutes || 25,
+                        pomodoro_short_break_minutes: profile.pomodoro_short_break_minutes || 5,
+                        pomodoro_long_break_minutes: profile.pomodoro_long_break_minutes || 15,
+                        pomodoro_sessions_until_long_break: profile.pomodoro_sessions_until_long_break || 4,
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching user profile:', error);
+            }
+        };
+
+        fetchUserProfile();
+    }, []);
 
     // Calculate elapsed time when timer is running
     useEffect(() => {
@@ -148,10 +188,53 @@ const TaskTimerWidget: React.FC<TaskTimerWidgetProps> = ({
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-            <div className="flex items-center justify-between">
-                {/* Left side - Time info */}
-                <div className="flex items-center space-x-4">
-                    <div className="flex flex-col">
+            {/* Mode Tabs (if pomodoro enabled) */}
+            {userProfile?.pomodoro_enabled && (
+                <div className="flex space-x-2 mb-4 border-b border-gray-200 dark:border-gray-700">
+                    <button
+                        onClick={() => setTimerMode('simple')}
+                        className={`px-4 py-2 text-sm font-medium transition-colors ${
+                            timerMode === 'simple'
+                                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                    >
+                        <ClockIcon className="h-4 w-4 inline mr-1" />
+                        {t('timer.simpleMode', 'Simple Timer')}
+                    </button>
+                    <button
+                        onClick={() => setTimerMode('pomodoro')}
+                        className={`px-4 py-2 text-sm font-medium transition-colors ${
+                            timerMode === 'pomodoro'
+                                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        }`}
+                    >
+                        🍅 {t('timer.pomodoroMode', 'Pomodoro')}
+                    </button>
+                </div>
+            )}
+
+            {/* Pomodoro Timer Mode */}
+            {timerMode === 'pomodoro' && userProfile && (
+                <PomodoroTimer
+                    task={task}
+                    userSettings={{
+                        pomodoro_work_minutes: userProfile.pomodoro_work_minutes,
+                        pomodoro_short_break_minutes: userProfile.pomodoro_short_break_minutes,
+                        pomodoro_long_break_minutes: userProfile.pomodoro_long_break_minutes,
+                        pomodoro_sessions_until_long_break: userProfile.pomodoro_sessions_until_long_break,
+                    }}
+                />
+            )}
+
+            {/* Simple Timer Mode */}
+            {timerMode === 'simple' && (
+                <div>
+                    <div className="flex items-center justify-between">
+                        {/* Left side - Time info */}
+                        <div className="flex items-center space-x-4">
+                            <div className="flex flex-col">
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                             {t('timer.estimated', 'Estimated')}
                         </span>
@@ -254,6 +337,8 @@ const TaskTimerWidget: React.FC<TaskTimerWidgetProps> = ({
                     </div>
                 </div>
             )}
+            </div>
+        )}
         </div>
     );
 };
