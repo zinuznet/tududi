@@ -31,6 +31,8 @@ const InboxItem = require('./inbox_item')(sequelize);
 const TaskEvent = require('./task_event')(sequelize);
 const TimeEntry = require('./timeEntry')(sequelize);
 const Section = require('./section')(sequelize);
+const SubtaskTemplate = require('./subtask_template')(sequelize);
+const SubtaskTemplateItem = require('./subtask_template_item')(sequelize);
 const Role = require('./role')(sequelize);
 const Action = require('./action')(sequelize);
 const Permission = require('./permission')(sequelize);
@@ -79,6 +81,19 @@ Project.hasMany(Section, { foreignKey: 'project_id', as: 'Sections' });
 Section.belongsTo(Project, { foreignKey: 'project_id', as: 'Project' });
 Section.hasMany(Task, { foreignKey: 'section_id', as: 'Tasks' });
 Task.belongsTo(Section, { foreignKey: 'section_id', as: 'Section' });
+
+// Subtask Template associations
+User.hasMany(SubtaskTemplate, { foreignKey: 'user_id', as: 'SubtaskTemplates' });
+SubtaskTemplate.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
+SubtaskTemplate.hasMany(SubtaskTemplateItem, {
+    foreignKey: 'template_id',
+    as: 'Items',
+    onDelete: 'CASCADE',
+});
+SubtaskTemplateItem.belongsTo(SubtaskTemplate, {
+    foreignKey: 'template_id',
+    as: 'Template',
+});
 
 // Task self-referencing associations for subtasks
 Task.belongsTo(Task, {
@@ -169,6 +184,8 @@ module.exports = {
     TaskEvent,
     TimeEntry,
     Section,
+    SubtaskTemplate,
+    SubtaskTemplateItem,
     Role,
     Action,
     Permission,
