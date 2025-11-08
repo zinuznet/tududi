@@ -165,6 +165,7 @@ const registerApiRoutes = (basePath) => {
     app.use(basePath, requireAuth, require('./routes/tasks'));
     app.use(basePath, requireAuth, require('./routes/projects'));
     app.use(`${basePath}/sections`, requireAuth, require('./routes/sections'));
+    app.use(`${basePath}/subtask-templates`, requireAuth, require('./routes/subtask-templates'));
     app.use(basePath, requireAuth, require('./routes/admin'));
     app.use(basePath, requireAuth, require('./routes/shares'));
     app.use(basePath, requireAuth, require('./routes/areas'));
