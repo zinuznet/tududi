@@ -235,6 +235,29 @@ const TagModal: React.FC<TagModalProps> = ({
                                             )}
                                             data-testid="tag-name-input"
                                         />
+
+                                        {/* Color Picker */}
+                                        <div className="mt-3">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                {t('forms.tagColor', 'Tag Color (optional)')}
+                                            </label>
+                                            <input
+                                                type="color"
+                                                name="color"
+                                                value={formData.color || '#3B82F6'}
+                                                onChange={handleChange}
+                                                className="h-10 w-20 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                                            />
+                                            {formData.color && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, color: null })}
+                                                    className="ml-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                                >
+                                                    {t('common.clear', 'Clear')}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </fieldset>
                             </form>
