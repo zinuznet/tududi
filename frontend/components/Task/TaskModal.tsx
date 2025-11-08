@@ -21,6 +21,8 @@ import {
     ListBulletIcon,
     ExclamationTriangleIcon,
     CalendarIcon,
+    ClockIcon,
+    BoltIcon,
 } from '@heroicons/react/24/outline';
 
 // Import form sections
@@ -91,6 +93,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
         project: false,
         priority: false,
         dueDate: false,
+        whenTime: false,
+        energyLevel: false,
         recurrence: false,
         subtasks: false,
     });
@@ -748,6 +752,89 @@ const TaskModal: React.FC<TaskModalProps> = ({
                                                     </div>
                                                 )}
 
+                                                {expandedSections.whenTime && (
+                                                    <div
+                                                        data-testid="whentime-section"
+                                                        data-state="expanded"
+                                                        className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-4 px-4"
+                                                    >
+                                                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                            {t(
+                                                                'forms.task.whenTime',
+                                                                'When Time'
+                                                            )}
+                                                        </h3>
+                                                        <select
+                                                            name="when_time"
+                                                            value={formData.when_time || ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value || null;
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    when_time: value as any,
+                                                                });
+                                                            }}
+                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        >
+                                                            <option value="">
+                                                                {t('forms.task.whenTimeNone', 'No preference')}
+                                                            </option>
+                                                            <option value="morning">
+                                                                {t('forms.task.whenTimeMorning', 'Morning')}
+                                                            </option>
+                                                            <option value="afternoon">
+                                                                {t('forms.task.whenTimeAfternoon', 'Afternoon')}
+                                                            </option>
+                                                            <option value="evening">
+                                                                {t('forms.task.whenTimeEvening', 'Evening')}
+                                                            </option>
+                                                            <option value="anytime">
+                                                                {t('forms.task.whenTimeAnytime', 'Anytime')}
+                                                            </option>
+                                                        </select>
+                                                    </div>
+                                                )}
+
+                                                {expandedSections.energyLevel && (
+                                                    <div
+                                                        data-testid="energylevel-section"
+                                                        data-state="expanded"
+                                                        className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-4 px-4"
+                                                    >
+                                                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                            {t(
+                                                                'forms.task.energyLevel',
+                                                                'Energy Level'
+                                                            )}
+                                                        </h3>
+                                                        <select
+                                                            name="energy_level"
+                                                            value={formData.energy_level || ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value || null;
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    energy_level: value as any,
+                                                                });
+                                                            }}
+                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        >
+                                                            <option value="">
+                                                                {t('forms.task.energyLevelNone', 'No preference')}
+                                                            </option>
+                                                            <option value="low">
+                                                                {t('forms.task.energyLevelLow', 'Low Energy')}
+                                                            </option>
+                                                            <option value="medium">
+                                                                {t('forms.task.energyLevelMedium', 'Medium Energy')}
+                                                            </option>
+                                                            <option value="high">
+                                                                {t('forms.task.energyLevelHigh', 'High Energy')}
+                                                            </option>
+                                                        </select>
+                                                    </div>
+                                                )}
+
                                                 {expandedSections.recurrence && (
                                                     <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-4 px-4">
                                                         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -912,6 +999,48 @@ const TaskModal: React.FC<TaskModalProps> = ({
                                             >
                                                 <CalendarIcon className="h-5 w-5" />
                                                 {formData.due_date && (
+                                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></span>
+                                                )}
+                                            </button>
+
+                                            {/* When Time Toggle */}
+                                            <button
+                                                onClick={() =>
+                                                    toggleSection('whenTime')
+                                                }
+                                                className={`relative p-2 rounded-full transition-colors ${
+                                                    expandedSections.whenTime
+                                                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                }`}
+                                                title={t(
+                                                    'forms.task.whenTime',
+                                                    'When Time'
+                                                )}
+                                            >
+                                                <ClockIcon className="h-5 w-5" />
+                                                {formData.when_time && (
+                                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></span>
+                                                )}
+                                            </button>
+
+                                            {/* Energy Level Toggle */}
+                                            <button
+                                                onClick={() =>
+                                                    toggleSection('energyLevel')
+                                                }
+                                                className={`relative p-2 rounded-full transition-colors ${
+                                                    expandedSections.energyLevel
+                                                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                }`}
+                                                title={t(
+                                                    'forms.task.energyLevel',
+                                                    'Energy Level'
+                                                )}
+                                            >
+                                                <BoltIcon className="h-5 w-5" />
+                                                {formData.energy_level && (
                                                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></span>
                                                 )}
                                             </button>

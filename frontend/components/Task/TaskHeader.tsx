@@ -9,6 +9,8 @@ import {
     PencilIcon,
     TrashIcon,
     EllipsisVerticalIcon,
+    ClockIcon,
+    BoltIcon,
 } from '@heroicons/react/24/outline';
 import { TagIcon, FolderIcon } from '@heroicons/react/24/solid';
 import { useTranslation } from 'react-i18next';
@@ -180,13 +182,15 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
         }
     };
 
-    // Check if task has metadata (project, tags, due_date, recurrence_type, or recurring_parent_id)
+    // Check if task has metadata (project, tags, due_date, recurrence_type, recurring_parent_id, when_time, or energy_level)
     const hasMetadata =
         (project && !hideProjectName) ||
         (task.tags && task.tags.length > 0) ||
         task.due_date ||
         (task.recurrence_type && task.recurrence_type !== 'none') ||
-        task.recurring_parent_id;
+        task.recurring_parent_id ||
+        task.when_time ||
+        task.energy_level;
 
     return (
         <div
@@ -460,6 +464,47 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
                                             {t(
                                                 'recurrence.instance',
                                                 'Recurring task instance'
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
+                                {((project && !hideProjectName) ||
+                                    (task.tags && task.tags.length > 0) ||
+                                    task.due_date ||
+                                    (task.recurrence_type &&
+                                        task.recurrence_type !== 'none') ||
+                                    task.recurring_parent_id) &&
+                                    task.when_time && (
+                                        <span className="mx-2">•</span>
+                                    )}
+                                {task.when_time && (
+                                    <div className="flex items-center">
+                                        <ClockIcon className="h-3 w-3 mr-1" />
+                                        <span>
+                                            {t(
+                                                `tasks.whenTime.${task.when_time}`,
+                                                task.when_time
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
+                                {((project && !hideProjectName) ||
+                                    (task.tags && task.tags.length > 0) ||
+                                    task.due_date ||
+                                    (task.recurrence_type &&
+                                        task.recurrence_type !== 'none') ||
+                                    task.recurring_parent_id ||
+                                    task.when_time) &&
+                                    task.energy_level && (
+                                        <span className="mx-2">•</span>
+                                    )}
+                                {task.energy_level && (
+                                    <div className="flex items-center">
+                                        <BoltIcon className="h-3 w-3 mr-1" />
+                                        <span>
+                                            {t(
+                                                `tasks.energyLevel.${task.energy_level}`,
+                                                task.energy_level
                                             )}
                                         </span>
                                     </div>
