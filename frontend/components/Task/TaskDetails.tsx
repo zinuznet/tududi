@@ -12,9 +12,11 @@ import {
     ListBulletIcon,
     XMarkIcon,
     ClockIcon,
+    ScissorsIcon,
 } from '@heroicons/react/24/outline';
 import ConfirmDialog from '../Shared/ConfirmDialog';
 import TaskModal from './TaskModal';
+import SplitTaskModal from './SplitTaskModal';
 import { Task } from '../../entities/Task';
 import { Project } from '../../entities/Project';
 import {
@@ -25,6 +27,7 @@ import {
     fetchTaskById,
     fetchTaskNextIterations,
     TaskIteration,
+    splitTask,
 } from '../../utils/tasksService';
 import { createProject } from '../../utils/projectsService';
 import { useStore } from '../../store/useStore';
@@ -56,6 +59,7 @@ const TaskDetails: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+    const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const [focusSubtasks, setFocusSubtasks] = useState(false);
     const [timelineRefreshKey, setTimelineRefreshKey] = useState(0);
@@ -381,6 +385,48 @@ const TaskDetails: React.FC = () => {
         setTaskToDelete(null);
     };
 
+    const handleSplitTask = async (
+        task1Name: string,
+        task2Name: string,
+        task1Description?: string,
+        task2Description?: string
+    ) => {
+        if (!task?.id) return;
+
+        try {
+            const result = await splitTask(task.id, {
+                task1_name: task1Name,
+                task2_name: task2Name,
+                task1_description: task1Description,
+                task2_description: task2Description,
+            });
+
+            // Add new tasks to the store and update original task
+            const newTasks = [...tasksStore.tasks];
+
+            // Update the original task (now archived)
+            const originalIndex = newTasks.findIndex((t: Task) => t.uid === uid);
+            if (originalIndex >= 0) {
+                newTasks[originalIndex] = result.originalTask;
+            }
+
+            // Add the two new tasks
+            newTasks.push(...result.newTasks);
+            tasksStore.setTasks(newTasks);
+
+            showSuccessToast(
+                t('task.splitSuccess', 'Task split successfully into two tasks')
+            );
+            setIsSplitModalOpen(false);
+
+            // Navigate to the first new task
+            navigate(`/task/${result.newTasks[0].uid}`);
+        } catch (error) {
+            console.error('Error splitting task:', error);
+            showErrorToast(t('task.splitError', 'Failed to split task'));
+        }
+    };
+
     const handleCreateProject = async (name: string): Promise<Project> => {
         try {
             return await createProject({ name });
@@ -576,8 +622,16 @@ const TaskDetails: React.FC = () => {
                         <button
                             onClick={handleEdit}
                             className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full transition-colors duration-200"
+                            title={t('task.edit', 'Edit')}
                         >
                             <PencilSquareIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                            onClick={() => setIsSplitModalOpen(true)}
+                            className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 rounded-full transition-colors duration-200"
+                            title={t('task.split', 'Split task')}
+                        >
+                            <ScissorsIcon className="h-5 w-5" />
                         </button>
                         <button
                             onClick={(e) => {
@@ -586,6 +640,7 @@ const TaskDetails: React.FC = () => {
                                 handleDeleteClick();
                             }}
                             className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-full transition-colors duration-200"
+                            title={t('task.delete', 'Delete')}
                         >
                             <TrashIcon className="h-5 w-5" />
                         </button>
@@ -1064,6 +1119,15 @@ const TaskDetails: React.FC = () => {
                             setIsConfirmDialogOpen(false);
                             setTaskToDelete(null);
                         }}
+                    />
+                )}
+
+                {/* Split Task Modal */}
+                {isSplitModalOpen && task && (
+                    <SplitTaskModal
+                        taskName={task.name}
+                        onConfirm={handleSplitTask}
+                        onCancel={() => setIsSplitModalOpen(false)}
                     />
                 )}
             </div>

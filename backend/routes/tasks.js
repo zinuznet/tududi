@@ -3081,4 +3081,259 @@ router.get('/task/:id/next-iterations', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/task/{id}/split:
+ *   post:
+ *     summary: Split a task into two new independent tasks
+ *     tags: [Tasks]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the task to split
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - task1_name
+ *               - task2_name
+ *             properties:
+ *               task1_name:
+ *                 type: string
+ *                 description: Name for the first new task
+ *                 example: "Write report"
+ *               task2_name:
+ *                 type: string
+ *                 description: Name for the second new task
+ *                 example: "Prepare presentation"
+ *               task1_description:
+ *                 type: string
+ *                 description: Optional description for the first task
+ *               task2_description:
+ *                 type: string
+ *                 description: Optional description for the second task
+ *     responses:
+ *       200:
+ *         description: Task split successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 originalTask:
+ *                   type: object
+ *                   description: The archived original task
+ *                 newTasks:
+ *                   type: array
+ *                   description: The two newly created tasks
+ *       400:
+ *         description: Bad request (missing task names)
+ *       403:
+ *         description: Forbidden (no access to task)
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/task/:id/split', async (req, res) => {
+    const transaction = await sequelize.transaction();
+
+    try {
+        const { task1_name, task2_name, task1_description, task2_description } = req.body;
+
+        // Validate required fields
+        if (!task1_name || task1_name.trim() === '') {
+            await transaction.rollback();
+            return res.status(400).json({ error: 'First task name is required.' });
+        }
+
+        if (!task2_name || task2_name.trim() === '') {
+            await transaction.rollback();
+            return res.status(400).json({ error: 'Second task name is required.' });
+        }
+
+        // Find original task with tags
+        const originalTask = await Task.findOne({
+            where: { id: req.params.id },
+            include: [
+                {
+                    model: Tag,
+                    attributes: ['id', 'name', 'uid'],
+                    through: { attributes: [] },
+                },
+                {
+                    model: Project,
+                    attributes: ['id', 'name', 'uid'],
+                    required: false,
+                },
+            ],
+            transaction,
+        });
+
+        if (!originalTask) {
+            await transaction.rollback();
+            return res.status(404).json({ error: 'Task not found.' });
+        }
+
+        // Check permissions
+        const access = await permissionsService.getAccess(
+            req.currentUser.id,
+            'task',
+            originalTask.uid
+        );
+        const isOwner = originalTask.user_id === req.currentUser.id;
+        const canWrite = isOwner || access === 'rw' || access === 'admin';
+
+        if (!canWrite) {
+            await transaction.rollback();
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        // Prepare tags data for copying
+        const tagsData = originalTask.Tags ? originalTask.Tags.map(tag => ({ name: tag.name })) : [];
+
+        // Create task 1
+        const task1Attributes = {
+            name: task1_name.trim(),
+            description: task1_description || null,
+            priority: originalTask.priority,
+            status: Task.STATUS.NOT_STARTED,
+            due_date: originalTask.due_date,
+            today: originalTask.today,
+            user_id: req.currentUser.id,
+            project_id: originalTask.project_id,
+            recurrence_type: 'none',
+            completion_based: false,
+        };
+
+        const task1 = await Task.create(task1Attributes, { transaction });
+        await updateTaskTags(task1, tagsData, req.currentUser.id);
+
+        // Create task 2
+        const task2Attributes = {
+            name: task2_name.trim(),
+            description: task2_description || null,
+            priority: originalTask.priority,
+            status: Task.STATUS.NOT_STARTED,
+            due_date: originalTask.due_date,
+            today: originalTask.today,
+            user_id: req.currentUser.id,
+            project_id: originalTask.project_id,
+            recurrence_type: 'none',
+            completion_based: false,
+        };
+
+        const task2 = await Task.create(task2Attributes, { transaction });
+        await updateTaskTags(task2, tagsData, req.currentUser.id);
+
+        // Archive original task
+        await originalTask.update(
+            {
+                status: Task.STATUS.ARCHIVED,
+            },
+            { transaction }
+        );
+
+        // Log event for split action
+        try {
+            await logEvent(
+                originalTask.id,
+                req.currentUser.id,
+                'task_split',
+                null,
+                {
+                    new_task_ids: [task1.id, task2.id],
+                    task1_name: task1.name,
+                    task2_name: task2.name,
+                },
+                { source: 'web' },
+                transaction
+            );
+        } catch (eventError) {
+            logError('Error logging task split event:', eventError);
+            // Don't fail the request if event logging fails
+        }
+
+        // Commit transaction
+        await transaction.commit();
+
+        // Reload tasks with full associations
+        const task1WithAssociations = await Task.findByPk(task1.id, {
+            include: [
+                {
+                    model: Tag,
+                    attributes: ['id', 'name', 'uid'],
+                    through: { attributes: [] },
+                },
+                {
+                    model: Project,
+                    attributes: ['id', 'name', 'uid'],
+                    required: false,
+                },
+            ],
+        });
+
+        const task2WithAssociations = await Task.findByPk(task2.id, {
+            include: [
+                {
+                    model: Tag,
+                    attributes: ['id', 'name', 'uid'],
+                    through: { attributes: [] },
+                },
+                {
+                    model: Project,
+                    attributes: ['id', 'name', 'uid'],
+                    required: false,
+                },
+            ],
+        });
+
+        const originalTaskReloaded = await Task.findByPk(originalTask.id, {
+            include: [
+                {
+                    model: Tag,
+                    attributes: ['id', 'name', 'uid'],
+                    through: { attributes: [] },
+                },
+                {
+                    model: Project,
+                    attributes: ['id', 'name', 'uid'],
+                    required: false,
+                },
+            ],
+        });
+
+        // Serialize tasks
+        const serializedTask1 = await serializeTask(
+            task1WithAssociations,
+            req.currentUser.timezone
+        );
+        const serializedTask2 = await serializeTask(
+            task2WithAssociations,
+            req.currentUser.timezone
+        );
+        const serializedOriginal = await serializeTask(
+            originalTaskReloaded,
+            req.currentUser.timezone
+        );
+
+        res.json({
+            originalTask: serializedOriginal,
+            newTasks: [serializedTask1, serializedTask2],
+        });
+    } catch (error) {
+        await transaction.rollback();
+        logError('Error splitting task:', error);
+        res.status(500).json({ error: 'Failed to split task' });
+    }
+});
+
 module.exports = router;

@@ -152,3 +152,30 @@ export const fetchTaskNextIterations = async (
     const result = await response.json();
     return result.iterations || [];
 };
+
+export interface SplitTaskData {
+    task1_name: string;
+    task2_name: string;
+    task1_description?: string;
+    task2_description?: string;
+}
+
+export interface SplitTaskResult {
+    originalTask: Task;
+    newTasks: [Task, Task];
+}
+
+export const splitTask = async (
+    taskId: number,
+    splitData: SplitTaskData
+): Promise<SplitTaskResult> => {
+    const response = await fetch(`/api/task/${taskId}/split`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: getPostHeaders(),
+        body: JSON.stringify(splitData),
+    });
+
+    await handleAuthResponse(response, 'Failed to split task.');
+    return await response.json();
+};
