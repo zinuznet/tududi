@@ -139,6 +139,19 @@ module.exports = (sequelize) => {
                     key: 'id',
                 },
             },
+            section_id: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'sections',
+                    key: 'id',
+                },
+            },
+            sort_order: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 0,
+            },
             completed_at: {
                 type: DataTypes.DATE,
                 allowNull: true,
@@ -210,6 +223,12 @@ module.exports = (sequelize) => {
         Task.hasMany(models.TimeEntry, {
             as: 'TimeEntries',
             foreignKey: 'task_id',
+        });
+
+        // Section association
+        Task.belongsTo(models.Section, {
+            as: 'Section',
+            foreignKey: 'section_id',
         });
     };
 

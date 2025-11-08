@@ -30,6 +30,7 @@ const Note = require('./note')(sequelize);
 const InboxItem = require('./inbox_item')(sequelize);
 const TaskEvent = require('./task_event')(sequelize);
 const TimeEntry = require('./timeEntry')(sequelize);
+const Section = require('./section')(sequelize);
 const Role = require('./role')(sequelize);
 const Action = require('./action')(sequelize);
 const Permission = require('./permission')(sequelize);
@@ -72,6 +73,12 @@ User.hasMany(TimeEntry, { foreignKey: 'user_id', as: 'TimeEntries' });
 TimeEntry.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
 Task.hasMany(TimeEntry, { foreignKey: 'task_id', as: 'TimeEntries' });
 TimeEntry.belongsTo(Task, { foreignKey: 'task_id', as: 'Task' });
+
+// Section associations
+Project.hasMany(Section, { foreignKey: 'project_id', as: 'Sections' });
+Section.belongsTo(Project, { foreignKey: 'project_id', as: 'Project' });
+Section.hasMany(Task, { foreignKey: 'section_id', as: 'Tasks' });
+Task.belongsTo(Section, { foreignKey: 'section_id', as: 'Section' });
 
 // Task self-referencing associations for subtasks
 Task.belongsTo(Task, {
@@ -161,6 +168,7 @@ module.exports = {
     InboxItem,
     TaskEvent,
     TimeEntry,
+    Section,
     Role,
     Action,
     Permission,
