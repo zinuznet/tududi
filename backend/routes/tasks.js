@@ -187,6 +187,9 @@ async function serializeTask(task, userTimezone = 'UTC', options = {}) {
     const todayMoveCount = await getTaskTodayMoveCount(task.id);
     const safeTimezone = getSafeTimezone(userTimezone);
 
+    // Calculate actual hours from time entries
+    const actualHours = await TimeEntry.calculateActualHours(task.id);
+
     // Include subtasks if they exist
     const { Subtasks, ...taskWithoutSubtasks } = taskJson;
 
@@ -257,6 +260,7 @@ async function serializeTask(task, userTimezone = 'UTC', options = {}) {
                 : new Date(task.completed_at).toISOString()
             : null,
         today_move_count: todayMoveCount,
+        actual_hours: parseFloat(actualHours.toFixed(2)), // Hours spent on this task
     };
 }
 
