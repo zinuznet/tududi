@@ -1,4 +1,4 @@
-const { addColumnIfNotExists } = require('../utils/migration-helpers');
+const { addColumnIfNotExists } = require('../utils/migration-utils');
 
 /**
  * Migration 016: Add Color to Tags

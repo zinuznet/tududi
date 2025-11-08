@@ -1,4 +1,4 @@
-const { tableExists } = require('../utils/migration-helpers');
+const { tableExists } = require('../utils/migration-utils');
 
 /**
  * Migration 011b: Add Pomodoro Sessions tracking table

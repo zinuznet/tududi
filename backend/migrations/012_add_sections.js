@@ -1,4 +1,4 @@
-const { tableExists, addColumnIfNotExists } = require('../utils/migration-helpers');
+const { tableExists, addColumnIfNotExists } = require('../utils/migration-utils');
 
 /**
  * Migration 012: Add Project Sections for Task Organization

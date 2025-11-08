@@ -1,4 +1,4 @@
-const { addColumnIfNotExists } = require('../utils/migration-helpers');
+const { addColumnIfNotExists } = require('../utils/migration-utils');
 
 /**
  * Migration 011: Add Pomodoro Timer settings to User model

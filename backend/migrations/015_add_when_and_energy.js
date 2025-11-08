@@ -1,4 +1,4 @@
-const { addColumnIfNotExists } = require('../utils/migration-helpers');
+const { addColumnIfNotExists } = require('../utils/migration-utils');
 
 /**
  * Migration 015: Add When Time and Energy Level to Tasks

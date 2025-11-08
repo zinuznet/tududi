@@ -171,9 +171,20 @@ async function safeRemoveColumn(queryInterface, tableName, columnName) {
     }
 }
 
+/**
+ * Helper function to add a single column if it doesn't exist
+ * Wrapper around safeAddColumns for backward compatibility
+ */
+async function addColumnIfNotExists(queryInterface, tableName, columnName, columnDefinition) {
+    return safeAddColumns(queryInterface, tableName, [
+        { name: columnName, definition: columnDefinition }
+    ]);
+}
+
 module.exports = {
     safeAddColumns,
     safeCreateTable,
     safeAddIndex,
     safeRemoveColumn,
+    addColumnIfNotExists,
 };

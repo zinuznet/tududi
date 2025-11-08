@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 const db = require('../models');
 
 /**
@@ -134,9 +134,9 @@ function scoreTask(task, timeContext, workSchedule) {
  *
  * Returns suggested tasks based on current time and energy context
  */
-router.get('/planner/suggest', authenticateToken, async (req, res) => {
+router.get('/planner/suggest', requireAuth, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.currentUser.id;
 
         // Get user's work schedule
         const user = await db.User.findByPk(userId, {
