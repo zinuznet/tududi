@@ -13,6 +13,7 @@ const {
     User,
     Permission,
     TimeEntry,
+    Section,
     sequelize,
 } = require('../models');
 const permissionsService = require('../services/permissionsService');
@@ -444,6 +445,12 @@ router.get(
                         attributes: ['id', 'name', 'uid'],
                         through: { attributes: [] },
                     },
+                    {
+                        model: Section,
+                        as: 'Sections',
+                        required: false,
+                        attributes: ['id', 'name', 'sort_order', 'collapsed'],
+                    },
                 ],
             });
 
@@ -497,6 +504,7 @@ router.get(
                 tags: projectJson.Tags || [],
                 Tasks: normalizedTasks,
                 Notes: normalizedNotes,
+                Sections: projectJson.Sections || [],
                 due_date_at: formatDate(project.due_date_at),
                 user_id: project.user_id,
                 share_count: shareCount,
