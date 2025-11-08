@@ -217,6 +217,34 @@ module.exports = (sequelize) => {
                     max: 10,
                 },
             },
+            // Work Schedule Configuration
+            work_days: {
+                type: DataTypes.TEXT, // JSON stored as TEXT in SQLite
+                allowNull: false,
+                defaultValue: JSON.stringify([1, 2, 3, 4, 5]), // Mon-Fri
+                get() {
+                    const rawValue = this.getDataValue('work_days');
+                    return rawValue ? JSON.parse(rawValue) : [1, 2, 3, 4, 5];
+                },
+                set(value) {
+                    this.setDataValue('work_days', JSON.stringify(value));
+                },
+            },
+            work_hours_start: {
+                type: DataTypes.STRING(5),
+                allowNull: false,
+                defaultValue: '09:00',
+            },
+            work_hours_end: {
+                type: DataTypes.STRING(5),
+                allowNull: false,
+                defaultValue: '17:00',
+            },
+            work_hours_per_day: {
+                type: DataTypes.DECIMAL(4, 2),
+                allowNull: false,
+                defaultValue: 8.0,
+            },
         },
         {
             tableName: 'users',
