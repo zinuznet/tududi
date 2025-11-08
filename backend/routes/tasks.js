@@ -3217,6 +3217,23 @@ router.post('/task/:id/split', async (req, res) => {
         const task1 = await Task.create(task1Attributes, { transaction });
         await updateTaskTags(task1, tagsData, req.currentUser.id);
 
+        // Transfer ALL time entries from original task to task1
+        await TimeEntry.update(
+            { task_id: task1.id },
+            {
+                where: { task_id: originalTask.id },
+                transaction,
+            }
+        );
+
+        // Copy estimated_hours from original to task1
+        if (originalTask.estimated_hours) {
+            await task1.update(
+                { estimated_hours: originalTask.estimated_hours },
+                { transaction }
+            );
+        }
+
         // Create task 2
         const task2Attributes = {
             name: task2_name.trim(),
@@ -3234,6 +3251,14 @@ router.post('/task/:id/split', async (req, res) => {
         const task2 = await Task.create(task2Attributes, { transaction });
         await updateTaskTags(task2, tagsData, req.currentUser.id);
 
+        // Set estimated_hours for task2 from project's default (if project exists)
+        if (originalTask.Project && originalTask.Project.default_task_hours) {
+            await task2.update(
+                { estimated_hours: originalTask.Project.default_task_hours },
+                { transaction }
+            );
+        }
+
         // Archive original task
         await originalTask.update(
             {
@@ -3241,6 +3266,12 @@ router.post('/task/:id/split', async (req, res) => {
             },
             { transaction }
         );
+
+        // Calculate how many time entries were transferred
+        const timeEntriesCount = await TimeEntry.count({
+            where: { task_id: task1.id },
+            transaction,
+        });
 
         // Log event for split action
         try {
@@ -3253,6 +3284,9 @@ router.post('/task/:id/split', async (req, res) => {
                     new_task_ids: [task1.id, task2.id],
                     task1_name: task1.name,
                     task2_name: task2.name,
+                    time_entries_transferred: timeEntriesCount,
+                    estimated_hours_task1: task1.estimated_hours,
+                    estimated_hours_task2: task2.estimated_hours,
                 },
                 { source: 'web' },
                 transaction
